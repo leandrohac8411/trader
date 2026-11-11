@@ -18,7 +18,16 @@ npm install
 npm run dev
 ```
 
-Abra http://localhost:5173/#office. O dashboard anterior está em `#dashboard` e no botão “Dashboard clássico”. O comando `npm run office` força `DEMO_BOT=0` apenas no processo iniciado; não modifica `.env`. Os comandos antigos de inicialização preservam seu comportamento.
+Abra http://localhost:5173/#office.
+
+**Para o bot operar na conta demo**, rode o servidor com `npm start` (em vez de `npm run office`), que respeita `DEMO_BOT`/`BOT_DRY_RUN` do `.env`. O `npm run office` força `DEMO_BOT=0` (só observação). O bot só opera enquanto o servidor estiver ligado.
+
+### Abas
+
+- **Escritório** (`#office`): a cena 3D logo no topo, o painel do agente e o registro de atividade.
+- **Mesa demo** (`#mesa`): o resultado da conta demo — veredito, saldo ao vivo, posições abertas, entradas e saídas encerradas, curva do lucro realizado, propostas do Ricardo e metas.
+- **Mercado** (`#mercado`): radar de sinais da Alice.
+- **Escola & gerente** (`#escola`): escola de traders e parecer do Claude. O dashboard anterior está em `#dashboard` e no botão “Dashboard clássico”. O comando `npm run office` força `DEMO_BOT=0` apenas no processo iniciado; não modifica `.env`. Os comandos antigos de inicialização preservam seu comportamento.
 
 ## Visual (fase A)
 
@@ -60,6 +69,14 @@ Cena 100% procedural em blocos (Three.js), sem modelos externos: o escritório f
 - Na cena: a antiga sala de operações virou a sala de aula (CAM 10), com a lousa do ranking e um crachá por aluno (cor = situação; ★ candidato; 🎓 pronto). Sofia é a professora e comenta promoções. No painel, a seção “Escola de traders” abaixo das metas.
 - Primeira avaliação real (11/11/2026): os seis alunos tiveram expectativa negativa no estudo, em linha com a auditoria de um ano. Ninguém foi promovido.
 
+## Mesa demo: está ganhando ou não?
+
+- `server/src/services/results.js` (testado) responde a partir dos trades encerrados registrados: acerto, expectativa em R com intervalo de 95%, lucro realizado, maior queda e curva.
+- Veredito: **sem dados**, **cedo demais** (menos de 30 trades), **ganhando de forma consistente** (intervalo todo acima de 0), **perdendo de forma consistente** (todo abaixo de 0) ou **inconclusivo**. Com 1h/4h e 5 ativos, chegar a 30 trades leva semanas.
+- Saldo e posições ao vivo vêm de `GET /api/office/desk` (só leitura, cache de 15 s; erros da corretora não são repassados).
+- Posições antigas que somem sem registro de fechamento na corretora viram o evento `unreconciled` e **não** contam como trade (antes entravam como resultado 0).
+- Cada proposta aprovada mostra o que aconteceu depois: ordem aberta, dry-run ou falha no envio.
+
 ## Proposta → aprovação → execução
 
 - Cada entrada do bot demo vira uma **proposta** (ativo, direção, entrada, stop, alvo, score, risco, tamanho). Antes de qualquer ordem, o Ricardo confere 8 limites em `server/src/services/approval.js` (testado): score acima do gate, stop e alvo do lado certo (stop a no máximo 15%), risco ≤ 2× a base, tamanho mínimo da corretora, notional abaixo do teto, perda no stop dentro do risco, vaga de posição livre (dry-run não ocupa vaga) e nenhuma posição no mesmo ativo.
@@ -100,6 +117,7 @@ As posições e os encerramentos da estação continuam identificados como hist�
 - `POST /api/office/monitor` com `{interval}` altera o período do radar, não os parâmetros da estratégia.
 - `POST /api/office/school/run` reavalia a escola agora (não envia ordens).
 - `POST /api/office/manager/review` pede um parecer ao gerente (Claude).
+- `GET /api/office/desk` saldo e posições da conta demo (só leitura).
 - `POST /api/office/agents/:id/run` com `{symbol, interval}`
 - `POST /api/office/agents/:id/chat` com `{prompt}`
 

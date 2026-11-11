@@ -113,3 +113,30 @@ test('proposals show Ricardo decisions with reason, routed to the risk agent',t=
   assert.equal(blocked.agentId,'risk');
   assert.match(blocked.message,/barrada pelo Ricardo · score 88 · Vaga de posição livre/);
 });
+test('desk route is read-only, hides provider errors and reports disabled bots',async t=>{
+  const call=async office=>{
+    const app=express();app.use('/api/office',office.router);
+    const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+    try{const res=await fetch(`http://127.0.0.1:${server.address().port}/api/office/desk`);return {status:res.status,body:await res.json()};}
+    finally{server.close();}
+  };
+  const off=await call(setup(t,{deskStatus:async()=>({equity:1})}));
+  assert.deepEqual(off.body.data,{enabled:false});
+  const bot={CFG:{enabled:true,dryRun:false,riskPct:1,maxOpen:3,dailyLossLimitPct:4,minProb:85,maxNotionalPct:.2},
+    loadState:()=>({keys:{}}),readTrades:()=>[],readEvents:()=>[],aggregateTrades:()=>({n:0,winRate:0,expectancyR:0})};
+  const fail=await call(setup(t,{bot,deskStatus:async()=>{throw Error('PRIVATE_PROVIDER_ERROR key=abc');}}));
+  assert.equal(fail.status,502);assert.ok(!JSON.stringify(fail.body).includes('PRIVATE'));
+  const ok=await call(setup(t,{bot,deskStatus:async()=>({equity:100,positions:[]})}));
+  assert.equal(ok.body.data.enabled,true);assert.equal(ok.body.data.equity,100);
+});
+test('proposal outcome tells opened, dry-run and failed orders apart',async()=>{
+  const { proposalsWithOutcome }=await import('../src/services/office.js');
+  const ev=[
+    {ts:1000,type:'approved',symbol:'BTCUSDT',tf:'240'},{ts:1500,type:'error',symbol:'BTCUSDT',tf:'240',detail:'Qty invalid'},
+    {ts:2000,type:'approved',symbol:'ETHUSDT',tf:'240'},{ts:2500,type:'opened',symbol:'ETHUSDT',tf:'240'},
+    {ts:3000,type:'approved',symbol:'SOLUSDT',tf:'60'},{ts:3100,type:'would_open',symbol:'SOLUSDT',tf:'60'},
+    {ts:4000,type:'blocked',symbol:'XRPUSDT',tf:'60',reason:'x'},
+  ];
+  const out=proposalsWithOutcome(ev);
+  assert.deepEqual(out.map(p=>[p.symbol,p.outcome]),[['XRPUSDT',null],['SOLUSDT','dry-run'],['ETHUSDT','opened'],['BTCUSDT','failed']]);
+});

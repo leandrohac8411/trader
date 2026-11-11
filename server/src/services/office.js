@@ -5,6 +5,7 @@ import { createMarketMonitor } from './market-monitor.js';
 import { computeTraderMood } from './crew.js';
 import { computeLadder, computeGoal, computeAchievements } from './game.js';
 import { createSchool } from './school.js';
+import { computeResults } from './results.js';
 
 export const TEAM = [
   { id: 'ceo', name: 'Arthur', role: 'CEO', color: '#e6ad63', task: 'Consolida resultados e incidentes.', action: 'Preparar relatório' },
@@ -29,7 +30,7 @@ async function withDeadline(task, ms = 30_000) {
 }
 
 // Read-only adapter: no order, pause, resume, leverage or risk mutation methods.
-export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadSchoolInputs = null, manager = null, dataDir = new URL('../../data/', import.meta.url) }) {
+export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadSchoolInputs = null, manager = null, deskStatus = null, dataDir = new URL('../../data/', import.meta.url) }) {
   const jobs = new Map();
   const subscribers = new Set();
   const eventsFile = new URL('office-events.jsonl', dataDir);
@@ -65,12 +66,11 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
       // Humor e pausa no lounge são leitura dos registros locais; não mudam o bot.
       crew: { trader: { ...trader, source: 'local-history' } },
       game: gameState(trades, state, bot.CFG),
+      // Resultado da conta demo: todos os trades encerrados registrados pelo bot.
+      results: computeResults(bot.readTrades(0)),
       school: school ? school.snapshot() : null,
       // Propostas do bot e a decisão do Ricardo (registro local do bot).
-      proposals: bot.readEvents(200).filter(e => ['approved', 'blocked'].includes(e.type)).slice(-10).reverse()
-        .map(e => ({ ts: e.ts, decision: e.type, symbol: e.symbol, tf: e.tf, dir: e.dir || e.signal, probability: e.probability,
-          riskPct: e.riskPct, notional: e.notional, riskUsd: e.riskUsd, reason: e.reason || null,
-          checks: Array.isArray(e.checks) ? e.checks.map(c => ({ label: c.label, ok: !!c.ok, detail: c.detail })) : [] })),
+      proposals: proposalsWithOutcome(bot.readEvents(300)),
       manager: manager ? manager.snapshot() : null,
       bot: { enabled: bot.CFG.enabled, dryRun: bot.CFG.dryRun, paused: state.paused || false,
         recordedDay: state.dayKey || null, positions, summary, closedTrades: trades,
@@ -151,6 +151,15 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
   }
   const router = Router();
   router.get('/snapshot', (_req,res) => res.json({ data: snapshot() }));
+  // Saldo e posições ao vivo da conta demo (só leitura). Erros do provedor não são repassados.
+  let deskCache = null;
+  router.get('/desk', async (_req,res)=>{
+    if (!deskStatus || !bot.CFG.enabled) return res.json({ data:{ enabled:false } });
+    if (deskCache && Date.now()-deskCache.at < 15_000) return res.json({ data:deskCache.value });
+    try { const value = { enabled:true, ...(await withDeadline(deskStatus(), 15_000)), at:new Date().toISOString() };
+      deskCache = { at:Date.now(), value }; res.json({ data:value }); }
+    catch { res.status(502).json({ error:'Não foi possível consultar a conta demo agora.' }); }
+  });
   router.post('/manager/review', async (_req,res)=>{
     if (!manager) return res.status(503).json({ error:'Gerente indisponível neste servidor.' });
     const id = randomUUID();
@@ -215,10 +224,26 @@ function gameState(trades, state, cfg) {
   return { ladder: { ...ladder, appliedToBot: !!cfg.ladder }, goal, achievements: computeAchievements({ trades, ladder, goal }) };
 }
 
+// Proposta + o que aconteceu depois da aprovação (ordem aberta, dry-run ou falha no envio).
+export function proposalsWithOutcome(events) {
+  const list = events.filter(e => ['approved', 'blocked'].includes(e.type)).slice(-10).reverse();
+  return list.map(e => {
+    let outcome = null;
+    if (e.type === 'approved') {
+      const next = events.find(x => x.ts >= e.ts && x.ts - e.ts < 60_000 && x.symbol === e.symbol && String(x.tf) === String(e.tf)
+        && ['opened', 'would_open', 'error'].includes(x.type));
+      outcome = !next ? 'pending' : next.type === 'opened' ? 'opened' : next.type === 'would_open' ? 'dry-run' : 'failed';
+    }
+    return { ts: e.ts, decision: e.type, outcome, symbol: e.symbol, tf: e.tf, dir: e.dir || e.signal, probability: e.probability,
+      riskPct: e.riskPct, notional: e.notional, riskUsd: e.riskUsd, reason: e.reason || null,
+      checks: Array.isArray(e.checks) ? e.checks.map(c => ({ label: c.label, ok: !!c.ok, detail: c.detail })) : [] };
+  });
+}
+
 function describeBotEvent(e) {
   const prefix = [e.symbol, e.tf ? `${e.tf}m` : ''].filter(Boolean).join(' · ');
   const labels = { opened:'Abertura demo registrada',closed:'Fechamento registrado',would_open:'Entrada simulada em dry-run',
-    stage:'Mudança de estágio',watching:'Monitoramento registrado',blocked:'Proposta barrada pelo Ricardo',approved:'Proposta aprovada pelo Ricardo',error:'Falha de execução' };
+    stage:'Mudança de estágio',watching:'Monitoramento registrado',blocked:'Proposta barrada pelo Ricardo',approved:'Proposta aprovada pelo Ricardo',unreconciled:'Posição antiga sem fechamento na corretora (não contabilizada)',error:'Falha de execução' };
   // Deliberately omit arbitrary provider error strings from the event feed/LLM.
   // O motivo de bloqueio vem do checklist local (approval.js), não da corretora.
   const why = e.type === 'blocked' && e.by === 'risk' && typeof e.reason === 'string' ? ` · ${e.reason.slice(0, 120)}` : '';

@@ -7,6 +7,16 @@ import './office.css';
 import { CHARACTER_ATLAS, CHARACTER_CELLS } from './characters.js';
 import { CAMERAS } from './createOfficeScene.js';
 import { Ficha, GoalsStrip, SchoolBoard, ManagerCard, ProposalsCard } from './GameUI.jsx';
+import DemoDesk from './DemoDesk.jsx';
+
+// Abas do escritório (endereço = hash, para poder favoritar ou compartilhar).
+const VIEWS=[
+  {id:'office',hash:'#office',label:'Escritório',icon:'office',title:'O mercado lá fora. Sua equipe aqui',sub:'Explore o escritório e acompanhe cada decisão.'},
+  {id:'desk',hash:'#mesa',label:'Mesa demo',icon:'wallet',title:'A conta demo, sem enfeite',sub:'Saldo, entradas, saídas e se a estratégia está ganhando ou não.'},
+  {id:'market',hash:'#mercado',label:'Mercado',icon:'pulse',title:'Radar de sinais',sub:'Os cinco mercados acompanhados pela Alice, ao vivo.'},
+  {id:'school',hash:'#escola',label:'Escola & gerente',icon:'cap',title:'Escola de traders e parecer do gerente',sub:'Variações da estratégia em teste e o parecer do Claude.'},
+];
+const viewFromHash=()=>VIEWS.find(v=>v.hash===window.location.hash)?.id||'office';
 
 const TEAM=[
   {id:'ceo',name:'Arthur',role:'CEO',color:'#e6ad63',task:'Consolida resultados e incidentes.',action:'Preparar relatório'},
@@ -29,6 +39,8 @@ function Icon({name,size=20,...props}) {
     plus:<path d="M12 5v14M5 12h14"/>,minus:<path d="M5 12h14"/>,reset:<><path d="M3 10a9 9 0 111 7M3 4v6h6"/></>,
     pause:<><path d="M9 5v14M15 5v14"/></>,play:<path d="m8 4 12 8-12 8z"/>,send:<><path d="m3 3 19 9-19 9 4-9zM7 12h15"/></>,
     globe:<><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a17 17 0 010 18 17 17 0 010-18"/></>,close:<path d="m6 6 12 12M18 6 6 18"/>,
+    wallet:<><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M3 7l12-4 2 4M16 13h2"/></>,
+    cap:<><path d="m2 9 10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5M22 9v6"/></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{paths[name]||paths.pulse}</svg>;
 }
@@ -81,6 +93,10 @@ export default function Office({onDashboard}) {
   const [analysisView,setAnalysisView]=useState('live');
   const [focused,setFocused]=useState(null);
   const [cam,setCam]=useState(null);
+  const [view,setViewState]=useState(viewFromHash);
+  useEffect(()=>{const sync=()=>setViewState(viewFromHash());window.addEventListener('hashchange',sync);return()=>window.removeEventListener('hashchange',sync);},[]);
+  function setView(id){const v=VIEWS.find(x=>x.id===id);setViewState(id);if(v&&window.location.hash!==v.hash)history.replaceState(null,'',v.hash);window.scrollTo({top:0,behavior:'instant'});}
+  const current=VIEWS.find(v=>v.id===view)||VIEWS[0];
   const scene=useRef(null),chatScroll=useRef(null);
   const agents=snapshot?.agents||TEAM;
   const agent=agents.find(a=>a.id===selected)||TEAM[1];
@@ -94,8 +110,8 @@ export default function Office({onDashboard}) {
     title:`${symbol} · ${liveSignal.interval}m · automático`,note:'Atualizado automaticamente pela estratégia existente. Não envia ordens.'}:null;
   useEffect(()=>{chatScroll.current?.scrollTo({top:chatScroll.current.scrollHeight,behavior:'smooth'});},[messages,selected]);
   useEffect(()=>{if(!focused)return;const back=event=>{if(event.key==='Escape')setFocused(null);};window.addEventListener('keydown',back);return()=>window.removeEventListener('keydown',back);},[focused]);
-  function select(id){setSelected(id);setActionError('');setFocused(id);setTab('activity');requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'instant'}));}
-  function showOffice(){setFocused(null);setActionError('');}
+  function select(id){setViewState('office');if(window.location.hash!=='#office')history.replaceState(null,'','#office');setSelected(id);setActionError('');setFocused(id);setTab('activity');requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'instant'}));}
+  function showOffice(){setFocused(null);setActionError('');setView('office');}
   function locate(){setFocused(null);requestAnimationFrame(()=>requestAnimationFrame(()=>scene.current?.focus(selected)));}
   async function perform(){
     if(selected==='analyst')setAnalysisView('manual');
@@ -113,29 +129,29 @@ export default function Office({onDashboard}) {
   return <div className={`office-app ${reduced?'reduce-motion':''}`}>
     <aside className="office-rail">
       <a className="office-logo" href="#office" onClick={showOffice} aria-label="Escritório Crypto Trading"><span>c</span><i/></a>
-      <div className="rail-nav"><button className="rail-active" onClick={showOffice} title="Escritório" aria-label="Escritório"><Icon name="office"/></button>
-        <button onClick={onDashboard} title="Dashboard clássico" aria-label="Abrir dashboard clássico"><Icon name="chart"/></button>
-        <button onClick={()=>{showOffice();requestAnimationFrame(()=>document.getElementById('office-team')?.scrollIntoView({behavior:reduced?'instant':'smooth'}));}} title="Equipe" aria-label="Ver equipe"><Icon name="people"/></button>
-        <button onClick={()=>setEventsExpanded(v=>!v)} title="Registros" aria-label="Expandir registros"><Icon name="pulse"/></button></div>
+      <nav className="rail-nav" aria-label="Seções">{VIEWS.map(v=><button key={v.id} className={view===v.id&&!focused?'rail-active':''} aria-current={view===v.id?'page':undefined}
+          onClick={()=>{setFocused(null);setView(v.id);}} title={v.label} aria-label={v.label}><Icon name={v.icon}/></button>)}
+        <button onClick={onDashboard} title="Dashboard clássico" aria-label="Abrir dashboard clássico"><Icon name="chart"/></button></nav>
       <div className="rail-bottom"><span className="operator-avatar">LC</span><span className="rail-version">v0.1</span></div>
     </aside>
     <div className="office-workspace">
       <header className="office-header"><div className="office-wordmark">CRYPTO<span>TRADING CO.</span></div><div className="header-divider"/>
-        <div className="office-breadcrumb">Workspace <span>/</span> <strong>{focused?agent.name:'Escritório'}</strong></div>
+        <div className="office-breadcrumb">Workspace <span>/</span> <strong>{focused?agent.name:current.label}</strong></div>
         <div className="header-right"><span className="demo-badge"><Icon name="shield" size={14}/> Bybit Demo</span><button className="classic-button" onClick={onDashboard}>Dashboard clássico <Icon name="arrow" size={16}/></button></div>
       </header>
       <main className="office-main">
-        <div className="office-title-row"><div><div className="office-eyebrow">{focused?'ACOMPANHANDO UM AGENTE':'SEU CENTRO DE OPERAÇÕES'}</div><h1>{focused?`${agent.name} · ${agent.role}`:'O mercado lá fora. Sua equipe aqui'}<span>.</span></h1><p>{focused?'A estação, os dados e a atividade deste agente.':'Explore o escritório e acompanhe cada decisão.'}</p></div>
+        <nav className="view-tabs" role="tablist" aria-label="Seções do escritório">{VIEWS.map(v=><button key={v.id} role="tab" aria-selected={view===v.id&&!focused} className={view===v.id&&!focused?'is-active':''}
+          onClick={()=>{setFocused(null);setView(v.id);}}><Icon name={v.icon} size={15}/>{v.label}</button>)}</nav>
+        <div className="office-title-row"><div><div className="office-eyebrow">{focused?'ACOMPANHANDO UM AGENTE':'SEU CENTRO DE OPERAÇÕES'}</div><h1>{focused?`${agent.name} · ${agent.role}`:current.title}<span>.</span></h1><p>{focused?'A estação, os dados e a atividade deste agente.':current.sub}</p></div>
           <div className={`connection-pill ${connected?'is-connected':''}`} role="status"><i/>{connected?'Conectado ao servidor':connection==='connecting'?'Conectando…':'Reconectando…'}<span>{snapshot?time(snapshot.updatedAt):'—'}</span></div>
         </div>
         {(error||!connected&&snapshot)&&<div className="office-warning" role="alert">{error||'Conexão interrompida. Os dados abaixo são da última atualização; novas consultas estão indisponíveis.'}<button onClick={refresh}>Tentar novamente</button></div>}
-        {focused?<div className="agent-focus-nav"><button onClick={showOffice}>← Voltar ao escritório</button><span>O monitor de sinais continua funcionando</span><label>Funcionário<select aria-label="Trocar agente em foco" value={selected} onChange={e=>select(e.target.value)}>{agents.map(a=><option key={a.id} value={a.id}>{a.name} · {a.role}</option>)}</select></label></div>:<MarketRadar monitor={snapshot?.monitor} connected={connected} onInterval={setMonitorInterval} notifications={notifications} onNotifications={enableNotifications}
+        {focused&&<div className="agent-focus-nav"><button onClick={showOffice}>← Voltar ao escritório</button><span>O monitor de sinais continua funcionando</span><label>Funcionário<select aria-label="Trocar agente em foco" value={selected} onChange={e=>select(e.target.value)}>{agents.map(a=><option key={a.id} value={a.id}>{a.name} · {a.role}</option>)}</select></label></div>}
+        {!focused&&view==='desk'&&<><DemoDesk snapshot={snapshot} connected={connected}/><ProposalsCard proposals={snapshot?.proposals} bot={snapshot?.bot}/><GoalsStrip game={snapshot?.game} mood={snapshot?.crew?.trader}/></>}
+        {!focused&&view==='market'&&<MarketRadar monitor={snapshot?.monitor} connected={connected} onInterval={setMonitorInterval} notifications={notifications} onNotifications={enableNotifications}
           onSelect={market=>{setSymbol(market);select('analyst');setTab('activity');setAnalysisView('live');}}/>}
-        {!focused&&<GoalsStrip game={snapshot?.game} mood={snapshot?.crew?.trader}/>}
-        {!focused&&<ManagerCard manager={snapshot?.manager} onReview={reviewManager} disabled={!connected}/>}
-        {!focused&&<ProposalsCard proposals={snapshot?.proposals} bot={snapshot?.bot}/>}
-        {!focused&&<SchoolBoard school={snapshot?.school} onRun={runSchool} disabled={!connected}/>}
-        <div className={`office-floor-layout ${focused?'office-focused-layout':''} ${focused&&selected==='trader'?'agent-focus-trader':''}`}>
+        {!focused&&view==='school'&&<><SchoolBoard school={snapshot?.school} onRun={runSchool} disabled={!connected}/><ManagerCard manager={snapshot?.manager} onReview={reviewManager} disabled={!connected}/></>}
+        {(focused||view==='office')&&<div className={`office-floor-layout ${focused?'office-focused-layout':''} ${focused&&selected==='trader'?'agent-focus-trader':''}`}>
           {focused?<AgentWorkspace key={focused} agent={agent} snapshot={snapshot} connected={connected}/>:<section className="floor-column" aria-label="Escritório interativo">
             <div className="floor-topbar"><div><i className="floor-dot"/> Escritório <span>/ 6 estações</span></div><div className="floor-tools">
               <select className="camera-select" aria-label="Escolher câmera" value={cam?.id||''} onChange={e=>scene.current?.setCamera(e.target.value)}>
@@ -178,8 +194,8 @@ export default function Office({onDashboard}) {
             </div>}
             <div className="agent-panel-footer"><Icon name="shield" size={13}/> Somente demo. Nenhuma ordem por esta tela.</div>
           </aside>
-        </div>
-        {!focused&&<section className={`office-events ${eventsExpanded?'events-expanded':''}`} aria-label="Registro de atividade"><div className="events-title"><div><Icon name="pulse" size={17}/><h2>O que acontece no escritório</h2><span>REGISTROS REAIS</span></div><button onClick={()=>setEventsExpanded(v=>!v)}>{eventsExpanded?'Recolher':'Ver histórico'} <Icon name="arrow" size={15}/></button></div>
+        </div>}
+        {!focused&&view==='office'&&<section className={`office-events ${eventsExpanded?'events-expanded':''}`} aria-label="Registro de atividade"><div className="events-title"><div><Icon name="pulse" size={17}/><h2>O que acontece no escritório</h2><span>REGISTROS REAIS</span></div><button onClick={()=>setEventsExpanded(v=>!v)}>{eventsExpanded?'Recolher':'Ver histórico'} <Icon name="arrow" size={15}/></button></div>
           <div className="event-table"><div className="event-table-head"><span>HORÁRIO</span><span>ORIGEM</span><span>ATIVIDADE</span><span>REGISTRO</span></div>{events.length?events.slice(0,eventsExpanded?40:4).map(e=>{const a=agents.find(a=>a.id===e.agentId);return <button className="event-row" key={e.id} onClick={()=>select(e.agentId)}><time>{date(e.ts)}</time><span className="event-origin"><i style={{background:a?.color}}/>{a?.name||'Sistema'}</span><span>{e.message}</span><small className={e.source==='bot'?'event-historical':''}>{e.source==='bot'?'Histórico do bot':'Consulta do escritório'}</small></button>;}):<div className="events-empty">Selecione um agente e execute uma consulta para começar.</div>}</div>
         </section>}
         <footer className="office-footer"><span>CRYPTO TRADING CO. <i/> Seu laboratório de mercado.</span><span>Estados reais · Pesquisa simulada · Sem ordens nesta tela</span></footer>

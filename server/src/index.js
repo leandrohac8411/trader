@@ -477,6 +477,14 @@ const office = createOffice({
   bot, analyze: runStrategy, chat: chatLLM, aiEnabled: AI_ENABLED,
   // Gerente (Claude): parecer só leitura, sob demanda. Precisa de ANTHROPIC_API_KEY.
   manager: createManager({ dataDir: new URL('../data/', import.meta.url) }),
+  // Saldo e posições da conta DEMO (bybit-demo.js só aceita api-demo.bybit.com).
+  deskStatus: async () => {
+    const s = bot.loadState();
+    const [equity, positions] = await Promise.all([demoEquity(), demoPositions()]);
+    return { equity: round(equity, 2), dayStartEquity: round(s.dayStartEquity || equity, 2), paused: s.paused || false,
+      dryRun: bot.CFG.dryRun, positions: positions.map(p => ({ symbol: p.symbol, side: p.side, size: p.size, entry: p.entry,
+        unrealisedPnl: round(p.unrealisedPnl, 2), stopLoss: p.stopLoss, takeProfit: p.takeProfit })) };
+  },
   // Escola: 1.000 velas de 1h + HTF 4h alinhado pelo FECHAMENTO (sem lookahead).
   loadSchoolInputs: async (symbol) => {
     const inputs = await btInputs({ symbol, interval: '60', limit: '1000', htf: '1' });

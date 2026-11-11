@@ -4,16 +4,47 @@
     {
       "name": "office-api",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "server", "run", "office"],
-      "env": { "PORT": "4000" },
+      "runtimeArgs": [
+        "--prefix",
+        "server",
+        "run",
+        "office"
+      ],
+      "env": {
+        "PORT": "4000"
+      },
+      "port": 4000,
+      "autoPort": false
+    },
+    {
+      "name": "demo-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "server",
+        "start"
+      ],
+      "env": {
+        "PORT": "4000"
+      },
       "port": 4000,
       "autoPort": false
     },
     {
       "name": "office-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "client", "run", "dev", "--", "--host", "127.0.0.1"],
-      "env": { "API_TARGET": "http://127.0.0.1:4000" },
+      "runtimeArgs": [
+        "--prefix",
+        "client",
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "127.0.0.1"
+      ],
+      "env": {
+        "API_TARGET": "http://127.0.0.1:4000"
+      },
       "port": 5173,
       "autoPort": false
     }

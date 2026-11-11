@@ -150,3 +150,19 @@ test("strategyParams só usa o aluno promovido com BOT_SCHOOL_PROMOTE", async ()
   assert.deepEqual(strategyParams({ cfg: { minProb: 85, schoolPromote: true }, promotion: null }), { minProbEntry: 85 });
   assert.deepEqual(strategyParams({ cfg: { minProb: 85, schoolPromote: true }, promotion }), { minProbEntry: 75, rr1: 2 });
 });
+
+test("isRecordedTrade descarta fechamentos não encontrados na corretora", async () => {
+  const { isRecordedTrade } = await import("../src/services/bot.js");
+  assert.equal(isRecordedTrade({ exit: null, reason: "unknown", netR: 0 }), false);
+  assert.equal(isRecordedTrade({ exit: 709.2, reason: "tp", netR: 1.4 }), true);
+  assert.equal(isRecordedTrade({ exit: 2433.26, reason: "stop", netR: -0.15 }), true);
+});
+
+test("roundToStep não deixa resíduo de ponto flutuante (Bybit recusa)", () => {
+  assert.equal(roundToStep(0.4797, 0.001), 0.479);
+  assert.equal(String(roundToStep(0.4797, 0.001)), "0.479");
+  assert.equal(String(roundToStep(33319.75, 0.1)), "33319.7");
+  assert.equal(String(roundToStep(417.73, 0.1)), "417.7");
+  assert.equal(String(roundToStep(2121.770944, 0.01)), "2121.77");
+  assert.equal(roundToStep(17.069, 0.01), 17.06);
+});

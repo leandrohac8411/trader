@@ -134,6 +134,7 @@ export function ProposalsCard({ proposals, bot }) {
     {!proposals.length ? <p className="quiet-copy">{bot?.enabled ? 'Nenhuma proposta registrada ainda: o bot só propõe quando surge sinal novo acima do gate.' : 'Nenhuma proposta: a execução demo está desligada neste servidor (DEMO_BOT=0).'}</p>
       : <ul className="proposals-list">{proposals.map(p => <li key={`${p.ts}-${p.symbol}`} className={p.decision === 'approved' ? 'is-ok' : 'is-blocked'}>
         <div className="proposal-head"><b>{p.decision === 'approved' ? '✓ Aprovada' : '✗ Barrada'}</b><span>{p.symbol} · {p.tf === '240' ? '4h' : p.tf === '60' ? '1h' : `${p.tf}m`} · {p.dir}</span>
+          {p.outcome && <em className={`outcome o-${p.outcome}`}>{{ opened: 'ordem aberta na demo', 'dry-run': 'só simulada (dry-run)', failed: 'envio falhou na corretora', pending: 'aguardando envio' }[p.outcome]}</em>}
           <small>{new Date(p.ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small></div>
         {p.reason && <p>{p.reason}</p>}
         {p.checks.length > 0 && <div className="proposal-checks">{p.checks.map(c => <span key={c.label} className={c.ok ? 'ok' : 'no'} title={c.detail}>{c.ok ? '✓' : '✗'} {c.label}</span>)}</div>}

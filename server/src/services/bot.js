@@ -49,7 +49,10 @@ export const CFG = {
 
 export function roundToStep(x, step) {
   if (!step || step <= 0) return x;
-  return Math.floor(x / step + 1e-9) * step;
+  // Corta no passo e limpa o resíduo de ponto flutuante (0.479000…04 → 0.479):
+  // a Bybit recusa quantidades com casas além do passo ("Qty invalid").
+  const decimals = (String(step).split(".")[1] || "").replace(/0+$/, "").length;
+  return Number((Math.floor(x / step + 1e-9) * step).toFixed(decimals));
 }
 
 export function tfMinutes(tf) {
@@ -174,7 +177,13 @@ export function readTrades(limit = 500) {
       /* linha corrompida — ignora */
     }
   }
-  return limit ? out.slice(-limit) : out;
+  // Ignora registros antigos sem saída nem motivo (fechamento não encontrado): não são trades reais.
+  const real = out.filter(isRecordedTrade);
+  return limit ? real.slice(-limit) : real;
+}
+
+export function isRecordedTrade(t) {
+  return !(t && t.exit == null && t.reason === "unknown");
 }
 
 function appendTrade(t) {
@@ -335,7 +344,15 @@ export async function tickOnce() {
               const c = closed
                 .filter((x) => x.closedAt >= ks.open.openedAt - 5_000)
                 .sort((x, y) => y.closedAt - x.closedAt)[0];
-              const pnl = c ? c.closedPnl : still ? 0 : 0;
+              if (!c) {
+                // Sem registro de fechamento na corretora (ex.: posição antiga fora do histórico
+                // consultado): não inventa um trade com resultado 0 — só registra o fato.
+                appendEvent({ type: "unreconciled", symbol, tf, dir: ks.open.side === "Buy" ? "LONG" : "SHORT",
+                  entry: ks.open.entry, openedAt: ks.open.openedAt });
+                log.push(`${key}: posição sumiu sem registro de fechamento — trade não contabilizado`);
+                throw Object.assign(new Error("sem fechamento"), { quiet: true });
+              }
+              const pnl = c.closedPnl;
               const netR = ks.open.riskUsd > 0 ? pnl / ks.open.riskUsd : 0;
               const notional = ks.open.qty * ks.open.entry;
               const exit = c?.exit ?? null;
@@ -365,7 +382,7 @@ export async function tickOnce() {
               appendEvent({ type: "closed", ...tradeLine });
               log.push(`${key}: FECHOU ${reason} netR ${netR.toFixed(2)} pnl ${pnl.toFixed(2)}`);
             } catch (e) {
-              log.push(`${key}: erro ao registrar fechamento ${e.message}`);
+              if (!e.quiet) log.push(`${key}: erro ao registrar fechamento ${e.message}`);
             }
             ks.open = null;
             ks.lastExitTs = Date.now();

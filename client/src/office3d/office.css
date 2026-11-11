@@ -164,3 +164,48 @@
 .proposal-checks span{font-size:9px;padding:2px 6px;border-radius:4px;background:#1b2a33;color:#9fd9b4}
 .proposal-checks span.no{background:#3c2b29;color:#fca5a5}
 @media(max-width:650px){.proposals-card header{flex-direction:column}.proposals-tally{text-align:left}}
+/* Abas do escritório */
+.view-tabs{display:flex;gap:4px;margin:-8px 0 18px;border-bottom:1px solid var(--line);overflow-x:auto}
+.view-tabs button{display:flex;align-items:center;gap:7px;border:0;background:none;color:#8399a5;padding:10px 14px 12px;font-size:12px!important;position:relative;white-space:nowrap}
+.view-tabs button:hover{color:#d6e1e3}
+.view-tabs button.is-active{color:#f2ead9}
+.view-tabs button.is-active:after{content:'';position:absolute;left:8px;right:8px;bottom:-1px;height:2px;background:var(--amber);border-radius:2px}
+/* Mesa demo */
+.demo-desk{display:flex;flex-direction:column;gap:14px;margin-bottom:18px}
+.desk-verdict{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-left:4px solid #94a3b8;border-radius:10px;padding:16px 18px}
+.desk-verdict h2{font:650 22px 'Manrope',sans-serif;margin:6px 0 4px;letter-spacing:-.5px}
+.desk-verdict p{margin:0;font-size:12px;line-height:1.6;color:#aebfc4;max-width:760px}
+.v-positivo{border-left-color:#4ade80}.v-positivo h2{color:#86efac}
+.v-negativo{border-left-color:#ef4444}.v-negativo h2{color:#fca5a5}
+.v-inconclusivo,.v-amostra{border-left-color:#fbbf24}.v-inconclusivo h2,.v-amostra h2{color:#fde68a}
+.desk-status{display:flex;align-items:center;gap:7px;font-size:11px;color:#aebfc4;white-space:nowrap}
+.desk-status i{width:7px;height:7px;border-radius:50%;background:#64748b}.desk-status i.on{background:#4ade80;box-shadow:0 0 0 4px #4ade8022}
+.desk-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.desk-kpis>div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.desk-kpis span{font:600 8px 'IBM Plex Mono',monospace;letter-spacing:1.3px;color:#8fa3ad;text-transform:uppercase}
+.desk-kpis b{font:600 18px 'IBM Plex Mono',monospace;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.desk-kpis small{font-size:9px;color:#7d949f}
+.demo-desk .pos{color:#86efac!important}.demo-desk .neg{color:#fca5a5!important}
+.desk-progress{position:relative;height:22px;background:#111e28;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.desk-progress i{position:absolute;inset:0 auto 0 0;background:#2f4a3a}
+.desk-progress span{position:relative;display:block;text-align:center;font:10px/22px 'IBM Plex Mono',monospace;color:#c1d0d5}
+.desk-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:14px}
+.desk-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.desk-box h3{font:600 12px 'DM Sans',sans-serif;color:#d6e1e3;margin:0 0 10px;display:flex;justify-content:space-between;gap:10px}
+.desk-box h3 em{font-style:normal;font:600 11px 'IBM Plex Mono',monospace}
+.desk-curve{width:100%;height:150px;display:block}
+.desk-curve .zero{stroke:#3a4a54;stroke-dasharray:4 4}
+.desk-curve path{fill:none;stroke-width:2.2;vector-effect:non-scaling-stroke}
+.desk-curve path.up{stroke:#4ade80}.desk-curve path.down{stroke:#f87171}
+.desk-curve-empty{height:150px;display:grid;place-items:center;font-size:11px;color:#7d949f;text-align:center}
+.desk-scroll{max-height:360px;overflow:auto}
+.desk-table{width:100%;border-collapse:collapse;font-size:11px}
+.desk-table th{font:600 8px 'IBM Plex Mono',monospace;letter-spacing:1px;color:#6f8996;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);text-transform:uppercase;position:sticky;top:0;background:var(--panel)}
+.desk-table td{padding:7px 8px;border-bottom:1px solid #22313a;color:#c7d5d6;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.desk-note{display:block;margin-top:10px;font-size:9px;line-height:1.5;color:#7d949f}
+@media(max-width:1200px){.desk-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.desk-grid{grid-template-columns:1fr}}
+@media(max-width:650px){.desk-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.desk-verdict{flex-direction:column}}
+/* Aba Escritório: a cena ocupa a altura da coluna (o painel lateral define a altura). */
+.office-floor-layout:not(.office-focused-layout) .floor-column .office-scene-wrap{flex:1 1 auto;height:auto;min-height:clamp(460px,52vw,720px)}
+.proposal-head .outcome{font-style:normal;font-size:9px;padding:1px 6px;border-radius:4px;background:#1b2a33;color:#9fb2bb}
+.proposal-head .o-opened{color:#86efac;background:#173126}.proposal-head .o-failed{color:#fca5a5;background:#3c2b29}

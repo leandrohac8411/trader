@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
+import { randomBytes } from "node:crypto";
 import { basicAuth, isLoopback } from "../src/auth.js";
 
 async function withServer(app, fn) {
@@ -8,6 +9,8 @@ async function withServer(app, fn) {
   await new Promise((r) => server.once("listening", r));
   try { return await fn(`http://127.0.0.1:${server.address().port}`); } finally { server.close(); }
 }
+// Senha gerada a cada execução: nada de credencial fixa no repositório.
+const PASS = randomBytes(12).toString("hex");
 const basic = (u, p) => ({ authorization: "Basic " + Buffer.from(`${u}:${p}`).toString("base64") });
 
 test("isLoopback reconhece só endereços locais", () => {
@@ -17,7 +20,7 @@ test("isLoopback reconhece só endereços locais", () => {
 
 test("basicAuth bloqueia sem senha, libera rota aberta e aceita credencial certa", async () => {
   const app = express();
-  app.use(basicAuth({ user: "admin", password: "s3nha", open: ["/api/health"] }));
+  app.use(basicAuth({ user: "admin", password: PASS, open: ["/api/health"] }));
   app.get("/api/health", (_q, r) => r.json({ ok: true }));
   app.get("/api/office/snapshot", (_q, r) => r.json({ ok: true }));
   await withServer(app, async (base) => {
@@ -25,9 +28,9 @@ test("basicAuth bloqueia sem senha, libera rota aberta e aceita credencial certa
     const denied = await fetch(base + "/api/office/snapshot");
     assert.equal(denied.status, 401);
     assert.match(denied.headers.get("www-authenticate"), /Basic/);
-    assert.equal((await fetch(base + "/api/office/snapshot", { headers: basic("admin", "errada") })).status, 401);
-    assert.equal((await fetch(base + "/api/office/snapshot", { headers: basic("outro", "s3nha") })).status, 401);
-    assert.equal((await fetch(base + "/api/office/snapshot", { headers: basic("admin", "s3nha") })).status, 200);
+    assert.equal((await fetch(base + "/api/office/snapshot", { headers: basic("admin", PASS + "x") })).status, 401);
+    assert.equal((await fetch(base + "/api/office/snapshot", { headers: basic("outro", PASS) })).status, 401);
+    assert.equal((await fetch(base + "/api/office/snapshot", { headers: basic("admin", PASS) })).status, 200);
   });
   assert.throws(() => basicAuth({ user: "a", password: "" }));
 });

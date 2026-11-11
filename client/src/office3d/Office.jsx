@@ -12,9 +12,9 @@ import DemoDesk from './DemoDesk.jsx';
 // Abas do escritório (endereço = hash, para poder favoritar ou compartilhar).
 const VIEWS=[
   {id:'office',hash:'#office',label:'Escritório',icon:'office',title:'O mercado lá fora. Sua equipe aqui',sub:'Explore o escritório e acompanhe cada decisão.'},
-  {id:'desk',hash:'#mesa',label:'Mesa demo',icon:'wallet',title:'A conta demo, sem enfeite',sub:'Saldo, entradas, saídas e se a estratégia está ganhando ou não.'},
+  {id:'desk',hash:'#mesa',label:'Mesa demo',short:'Mesa',icon:'wallet',title:'A conta demo, sem enfeite',sub:'Saldo, entradas, saídas e se a estratégia está ganhando ou não.'},
   {id:'market',hash:'#mercado',label:'Mercado',icon:'pulse',title:'Radar de sinais',sub:'Os cinco mercados acompanhados pela Alice, ao vivo.'},
-  {id:'school',hash:'#escola',label:'Escola & gerente',icon:'cap',title:'Escola de traders e parecer do gerente',sub:'Variações da estratégia em teste e o parecer do Claude.'},
+  {id:'school',hash:'#escola',label:'Escola & gerente',short:'Escola',icon:'cap',title:'Escola de traders e parecer do gerente',sub:'Variações da estratégia em teste e o parecer do Claude.'},
 ];
 const viewFromHash=()=>VIEWS.find(v=>v.hash===window.location.hash)?.id||'office';
 
@@ -200,5 +200,9 @@ export default function Office({onDashboard}) {
         <footer className="office-footer"><span>CRYPTO TRADING CO. <i/> Seu laboratório de mercado.</span><span>Estados reais · Pesquisa simulada · Sem ordens nesta tela</span></footer>
       </main>
     </div>
+    {/* Celular: menu fixo embaixo (a barra lateral e as abas do topo somem). */}
+    <nav className="mobile-nav" aria-label="Menu">{VIEWS.map(v=><button key={v.id} className={view===v.id&&!focused?'is-active':''} aria-current={view===v.id&&!focused?'page':undefined}
+        onClick={()=>{setFocused(null);setView(v.id);}}><Icon name={v.icon} size={21}/><span>{v.short||v.label}</span></button>)}
+      <button onClick={onDashboard}><Icon name="chart" size={21}/><span>Clássico</span></button></nav>
   </div>;
 }

@@ -52,6 +52,6 @@ export default function OfficeScene({ agents, snapshot, selected, onSelect, redu
         <i className={a.state === 'working' ? 'is-working' : ''} />{a.name}<span>{stateLabel(a)}</span>
       </button>)}
     </div>}
-    <div className="scene-caption"><span className="floor-mark">COBERTURA</span><span>Arraste para girar · role para aproximar · clique em alguém</span></div>
+    <div className="scene-caption"><span className="floor-mark">COBERTURA</span><span className="caption-desktop">Arraste para girar · role para aproximar · clique em alguém</span><span className="caption-touch">1 dedo rola a página · 2 dedos giram e aproximam · toque em alguém</span></div>
   </div>;
 }

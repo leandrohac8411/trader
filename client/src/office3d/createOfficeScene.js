@@ -67,6 +67,11 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
   controls.maxPolarAngle = 1.32;
   controls.minZoom = 0.28;
   controls.maxZoom = 3.4;
+  // Celular/tablet: 1 dedo rola a página (não prende o usuário na cena); 2 dedos giram e aproximam.
+  if (window.matchMedia?.('(pointer: coarse)').matches) {
+    controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
+    renderer.domElement.style.touchAction = 'pan-y';
+  }
 
   // ── Lights ────────────────────────────────────────────────────────────────
   scene.add(new THREE.HemisphereLight('#b7c7e6', '#1d2534', 1.6));

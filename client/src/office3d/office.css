@@ -220,3 +220,92 @@
 .market-reading small{font:600 8px 'IBM Plex Mono',monospace;letter-spacing:1.2px;color:#6f8996}
 .market-reading strong{font:650 15px 'Manrope',sans-serif;color:#e6eef0}
 .market-reading span{font-size:11px;color:#8fa3ad}
+/* ───────────── Celular ───────────── */
+.mobile-nav{display:none}
+.caption-touch{display:none}
+@media(pointer:coarse){
+  .office-scene{touch-action:pan-y}
+  .caption-desktop{display:none}.caption-touch{display:inline}
+}
+@media(max-width:760px){
+  /* Menu fixo embaixo no lugar da barra lateral e das abas do topo */
+  .office-rail,.view-tabs,.classic-button{display:none!important}
+  .office-app{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+  .mobile-nav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;z-index:50;left:0;right:0;bottom:0;
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:#111c24f5;border-top:1px solid var(--line);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .mobile-nav button{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:#8399a5;
+    padding:6px 0!important;border-radius:10px;font-size:10px!important;min-height:48px;-webkit-tap-highlight-color:transparent}
+  .mobile-nav button span{font-size:10px;line-height:1}
+  .mobile-nav button.is-active{color:#f2ead9;background:#2a3640}
+  .mobile-nav button.is-active svg{color:var(--amber)}
+  /* Topo compacto */
+  .office-header{height:56px;padding:0 14px;padding-top:env(safe-area-inset-top);box-sizing:content-box}
+  .office-main{padding:14px 12px 0}
+  .office-title-row{flex-direction:row;align-items:center;gap:10px;margin-bottom:12px}
+  .office-title-row .office-eyebrow,.office-title-row p{display:none}
+  .office-title-row h1{font-size:19px!important;line-height:1.25;max-width:none;letter-spacing:-.5px}
+  .connection-pill{flex-shrink:0;font-size:9px}
+  .connection-pill>span{display:none!important}
+  /* Escritório: controles da câmera em 2 linhas, cena maior, alvos de toque grandes */
+  .floor-topbar{height:auto;flex-wrap:wrap;gap:6px;padding:8px 10px}
+  .floor-topbar>div:first-child{display:none}
+  .floor-tools{width:100%;gap:4px;align-items:center}
+  .floor-tools .camera-select{flex:1;max-width:none;min-width:0;height:36px}
+  .floor-tools button{width:36px!important;height:36px!important}
+  .floor-tools .tour-button{width:auto!important;padding:0 10px}
+  .floor-tools button:first-child{margin-right:0;border-right:0;width:36px}
+  .office-floor-layout:not(.office-focused-layout) .floor-column .office-scene-wrap{min-height:0;height:min(68vh,460px)}
+  .scene-caption{font-size:9px;bottom:10px;left:10px;right:10px}
+  .scene-caption .floor-mark{display:none}
+  .scene-cam-hud{font-size:9px!important}
+  .team-member{min-height:52px}
+  .agent-tabs button{padding-bottom:14px;font-size:13px!important}
+  .agent-action{min-height:44px;font-size:13px!important}
+  /* Registro de atividade sem cabeçalho de tabela */
+  .event-table-head{display:none}
+  /* Mesa demo: tabelas viram cartões */
+  .desk-scroll{max-height:none;overflow:visible}
+  .desk-table thead{display:none}
+  .desk-table,.desk-table tbody{display:block}
+  .desk-table tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;padding:10px 0;border-bottom:1px solid #22313a}
+  .desk-table td{border:0;padding:2px 0;white-space:normal;display:flex;flex-direction:column;gap:2px;font-size:12px}
+  .desk-table td::before{content:attr(data-label);font:600 8px 'IBM Plex Mono',monospace;letter-spacing:1px;color:#6f8996;text-transform:uppercase}
+  .desk-kpis b{font-size:16px}
+  .desk-verdict h2{font-size:19px}
+  .desk-grid{gap:12px}
+  /* Escola: cada aluno vira um cartão (situação sempre visível) */
+  .school-table{overflow:visible}
+  .school-head{display:none!important}
+  .school-row{min-width:0;grid-template-columns:22px repeat(3,minmax(0,1fr));grid-template-areas:"rank name name status" ". study exam paper";gap:8px 10px;padding:10px 6px}
+  .school-row>span:nth-child(1){grid-area:rank}
+  .school-row>span:nth-child(2){grid-area:name}
+  .school-row>span:nth-child(3){grid-area:study}
+  .school-row>span:nth-child(4){grid-area:exam}
+  .school-row>span:nth-child(5){grid-area:paper}
+  .school-row>span:nth-child(6){grid-area:status;text-align:right;align-self:start}
+  .school-row>span:nth-child(3)::before{content:'Estudo'}
+  .school-row>span:nth-child(4)::before{content:'Prova'}
+  .school-row>span:nth-child(5)::before{content:'Papel'}
+  .school-row>span:nth-child(n+3):nth-child(-n+5)::before{font:600 8px 'IBM Plex Mono',monospace;letter-spacing:1px;color:#6f8996;text-transform:uppercase}
+  .school-board,.manager-card,.proposals-card,.desk-box,.market-chart-panel{padding:12px}
+  .school-run{width:100%;flex-direction:row;justify-content:space-between;align-items:center}
+  .school-run button{min-height:40px}
+  /* Mercado */
+  .market-chart-controls{flex-direction:column}
+  .market-symbols{width:100%}
+  .market-symbols button{flex:1;min-height:38px}
+  /* Campos com 16px: o iPhone não dá zoom ao tocar */
+  .office-app input,.office-app select,.office-app textarea{font-size:16px!important}
+  .floor-tools .camera-select{font-size:13px!important}
+}
+@media(max-width:760px){
+  /* zoom por pinça no celular: sem botões −/+ e mais espaço para o nome da câmera */
+  .floor-tools button[aria-label="Afastar câmera"],.floor-tools button[aria-label="Aproximar câmera"]{display:none}
+  .scene-caption span:not(.floor-mark){background:#0b1322cc;padding:4px 8px;border-radius:6px;color:#b9c8cf}
+}
+@media(max-width:760px){
+  .proposal-head{flex-wrap:wrap;gap:4px 10px}
+  .proposal-head b{white-space:nowrap}
+  .proposal-head .outcome{order:5;flex-basis:100%;width:max-content;max-width:100%}
+}

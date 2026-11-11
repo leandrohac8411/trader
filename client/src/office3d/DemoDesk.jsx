@@ -74,16 +74,16 @@ export default function DemoDesk({ snapshot, connected }) {
           : !desk ? <p className="quiet-copy">Consultando…</p>
           : !desk.positions?.length ? <p className="quiet-copy">Nenhuma posição aberta na conta demo.</p>
           : <table className="desk-table"><thead><tr><th>Ativo</th><th>Lado</th><th>Entrada</th><th>Stop</th><th>Alvo</th><th>Resultado</th></tr></thead>
-            <tbody>{desk.positions.map(p => <tr key={p.symbol}><td>{p.symbol.replace('USDT', '')}</td><td>{p.side === 'Buy' ? 'Compra' : 'Venda'}</td><td>{p.entry}</td><td>{p.stopLoss ?? '—'}</td><td>{p.takeProfit ?? '—'}</td>
-              <td className={p.unrealisedPnl >= 0 ? 'pos' : 'neg'}>{usd(p.unrealisedPnl, true)}</td></tr>)}</tbody></table>}
+            <tbody>{desk.positions.map(p => <tr key={p.symbol}><td data-label="Ativo">{p.symbol.replace('USDT', '')}</td><td data-label="Lado">{p.side === 'Buy' ? 'Compra' : 'Venda'}</td><td data-label="Entrada">{p.entry}</td><td data-label="Stop">{p.stopLoss ?? '—'}</td><td data-label="Alvo">{p.takeProfit ?? '—'}</td>
+              <td data-label="Resultado" className={p.unrealisedPnl >= 0 ? 'pos' : 'neg'}>{usd(p.unrealisedPnl, true)}</td></tr>)}</tbody></table>}
       </div>
     </div>
 
     <div className="desk-box"><h3>Entradas e saídas encerradas</h3>
       {!res.trades.length ? <p className="quiet-copy">Nenhum trade encerrado registrado ainda.</p>
         : <div className="desk-scroll"><table className="desk-table"><thead><tr><th>Fechou</th><th>Ativo</th><th>Direção</th><th>Entrada → saída</th><th>Saiu por</th><th>R</th><th>Resultado</th></tr></thead>
-          <tbody>{res.trades.map(t => <tr key={`${t.symbol}-${t.closedAt}`}><td>{when(t.closedAt)}</td><td>{t.symbol?.replace('USDT', '')} · {tfLabel(t.tf)}</td><td>{t.dir === 'LONG' ? 'Compra' : 'Venda'}</td>
-            <td>{t.entry} → {t.exit ?? '—'}</td><td>{REASON[t.reason] || t.reason}</td><td className={t.netR > 0 ? 'pos' : 'neg'}>{r3(t.netR)}</td><td className={t.pnlUsd > 0 ? 'pos' : 'neg'}>{usd(t.pnlUsd, true)}</td></tr>)}</tbody></table></div>}
+          <tbody>{res.trades.map(t => <tr key={`${t.symbol}-${t.closedAt}`}><td data-label="Fechou">{when(t.closedAt)}</td><td data-label="Ativo">{t.symbol?.replace('USDT', '')} · {tfLabel(t.tf)}</td><td data-label="Direção">{t.dir === 'LONG' ? 'Compra' : 'Venda'}</td>
+            <td data-label="Entrada → saída">{t.entry} → {t.exit ?? '—'}</td><td data-label="Saiu por">{REASON[t.reason] || t.reason}</td><td data-label="R" className={t.netR > 0 ? 'pos' : 'neg'}>{r3(t.netR)}</td><td data-label="Resultado" className={t.pnlUsd > 0 ? 'pos' : 'neg'}>{usd(t.pnlUsd, true)}</td></tr>)}</tbody></table></div>}
       <small className="desk-note">Registros locais do bot, não reconciliados com a corretora. Conta demo: dinheiro fictício, sem garantia para conta real. Não é recomendação de investimento.</small>
     </div>
   </section>;

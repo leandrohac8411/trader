@@ -89,3 +89,34 @@ export function SchoolBoard({ school, onRun, disabled }) {
     </div>}
   </section>;
 }
+
+const STATUS_LABEL = { ok: 'OK', atencao: 'Atenção', alerta: 'Alerta' };
+const AREA_LABEL = { risco: 'Risco', trader: 'Trader', estrategia: 'Estratégia', escola: 'Escola', metas: 'Metas', operacao: 'Operação' };
+
+export function ManagerCard({ manager, onReview, disabled }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  if (!manager) return null;
+  const r = manager.last;
+  const go = async () => {
+    setBusy(true); setErr('');
+    try { await onReview(); } catch (e) { setErr(e?.message || 'Não foi possível gerar o parecer.'); } finally { setBusy(false); }
+  };
+  return <section className="manager-card" aria-label="Parecer do gerente">
+    <header>
+      <div><span className="goal-eyebrow">GERENTE · CLAUDE</span>
+        <h3>Parecer do escritório</h3>
+        <small>Lê o estado atual (humor, regra, metas, escola, sinais) e escreve um parecer. Só leitura: não envia ordens nem muda configuração. Cada parecer é uma chamada paga à API.</small></div>
+      <div className="school-run"><small>{busy || manager.running ? 'Escrevendo…' : r ? `Último: ${new Date(r.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Nenhum parecer ainda'}</small>
+        <button type="button" onClick={go} disabled={disabled || busy || manager.running || !manager.enabled}>Pedir parecer</button></div>
+    </header>
+    {!manager.enabled && <p className="school-error">Indisponível: configure <code>ANTHROPIC_API_KEY</code> no <code>server/.env</code> e reinicie o servidor.</p>}
+    {(err || manager.error) && <p className="school-error" role="alert">{err || manager.error}</p>}
+    {r && <div className="manager-body">
+      <p className="manager-summary">{r.resumo}</p>
+      <ul>{r.pontos.map((p, i) => <li key={i} className={`mg-${p.status}`}><b>{AREA_LABEL[p.area] || p.area}</b><em>{STATUS_LABEL[p.status]}</em><span>{p.texto}</span></li>)}</ul>
+      {r.proximos_passos.length > 0 && <><span className="goal-eyebrow">PRÓXIMOS PASSOS</span><ol>{r.proximos_passos.map((x, i) => <li key={i}>{x}</li>)}</ol></>}
+      <small>{r.model} · não é recomendação de investimento.</small>
+    </div>}
+  </section>;
+}

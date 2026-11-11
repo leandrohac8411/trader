@@ -60,6 +60,12 @@ Cena 100% procedural em blocos (Three.js), sem modelos externos: o escritório f
 - Na cena: a antiga sala de operações virou a sala de aula (CAM 10), com a lousa do ranking e um crachá por aluno (cor = situação; ★ candidato; 🎓 pronto). Sofia é a professora e comenta promoções. No painel, a seção “Escola de traders” abaixo das metas.
 - Primeira avaliação real (11/11/2026): os seis alunos tiveram expectativa negativa no estudo, em linha com a auditoria de um ano. Ninguém foi promovido.
 
+## Gerente (Claude)
+
+- `server/src/services/manager.js` (testado com cliente falso): sob demanda, pelo botão “Pedir parecer” no painel, o Claude (`claude-opus-5-5`, ajustável com `MANAGER_MODEL`) lê um resumo do snapshot — humor do Lucas, a regra, a meta, conquistas, sinais ao vivo, a escola e os últimos eventos — e devolve um parecer em JSON (resumo, pontos por área com OK/atenção/alerta, até 3 próximos passos).
+- Só leitura: sem ferramentas, sem ordens, sem mudar configuração; o prompt proíbe inventar números e recomendar compra/venda. O parecer fica em `server/data/manager-review.json` e Arthur avisa na cena quando chega.
+- Precisa de `ANTHROPIC_API_KEY` no `server/.env`. Sem chave, o cartão mostra “indisponível”. Cada parecer é uma chamada paga; há intervalo mínimo de 1 minuto e nada roda em loop. Se o modelo recusar, a API refaz a chamada num modelo de reserva (`fallbacks: "default"`).
+
 ## O que funciona
 
 - Alice: monitora automaticamente BTC, ETH, SOL, BNB e XRP a cada 45 segundos, sem precisar de cliques. Usa a mesma estratégia existente, inicialmente em 1 minuto, como no dashboard anterior. O radar permite escolher 1m, 5m, 15m, 1h ou 4h. Consultas extras de 1h/4h continuam disponíveis.
@@ -86,6 +92,7 @@ As posições e os encerramentos da estação continuam identificados como hist�
 - `GET /api/office/events` (SSE, snapshot a cada 5 segundos e nas transições de tarefa)
 - `POST /api/office/monitor` com `{interval}` altera o período do radar, não os parâmetros da estratégia.
 - `POST /api/office/school/run` reavalia a escola agora (não envia ordens).
+- `POST /api/office/manager/review` pede um parecer ao gerente (Claude).
 - `POST /api/office/agents/:id/run` com `{symbol, interval}`
 - `POST /api/office/agents/:id/chat` com `{prompt}`
 

@@ -49,6 +49,7 @@ export default function useOffice() {
     return response.data;
   },[]);
   const runSchool=useCallback(async()=>{await API.post('/api/office/school/run',{},{timeout:180000});await refresh();},[refresh]);
+  const reviewManager=useCallback(async()=>{await API.post('/api/office/manager/review',{},{timeout:180000});await refresh();},[refresh]);
   const setMonitorInterval=useCallback(async interval=>{await API.post('/api/office/monitor',{interval});await refresh();},[refresh]);
   const enableNotifications=useCallback(async()=>{
     if(!('Notification' in window))return;
@@ -59,5 +60,5 @@ export default function useOffice() {
       else setNotifications(permission==='denied'?'denied':'off');
     } catch {setNotifications('denied');}
   },[]);
-  return {snapshot,connection,error,refresh,run,chat,runSchool,setMonitorInterval,notifications,enableNotifications};
+  return {snapshot,connection,error,refresh,run,chat,runSchool,reviewManager,setMonitorInterval,notifications,enableNotifications};
 }

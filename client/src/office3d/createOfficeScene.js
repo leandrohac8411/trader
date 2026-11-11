@@ -195,6 +195,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
       } else if (item.type === 'task.started') say(item.agentId, 'Deixa comigo!', 4000);
       else if (item.type === 'task.completed') say(item.agentId, 'Pronto!', 4000);
       else if (item.type === 'task.failed') say(item.agentId, 'Ih, falhou…', 5000);
+      else if (item.type === 'manager.review') say('ceo', 'Chegou o parecer do gerente.');
       else if (item.type === 'school.promoted') say('scientist', 'Temos um formando! 🎓');
       else if (item.type === 'school.demoted') say('scientist', 'Promoção suspensa.');
       else if (item.type === 'school.failed') say('scientist', 'A avaliação falhou.', 5000);

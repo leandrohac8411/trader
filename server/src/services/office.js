@@ -29,7 +29,7 @@ async function withDeadline(task, ms = 30_000) {
 }
 
 // Read-only adapter: no order, pause, resume, leverage or risk mutation methods.
-export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadSchoolInputs = null, dataDir = new URL('../../data/', import.meta.url) }) {
+export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadSchoolInputs = null, manager = null, dataDir = new URL('../../data/', import.meta.url) }) {
   const jobs = new Map();
   const subscribers = new Set();
   const eventsFile = new URL('office-events.jsonl', dataDir);
@@ -66,6 +66,7 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
       crew: { trader: { ...trader, source: 'local-history' } },
       game: gameState(trades, state, bot.CFG),
       school: school ? school.snapshot() : null,
+      manager: manager ? manager.snapshot() : null,
       bot: { enabled: bot.CFG.enabled, dryRun: bot.CFG.dryRun, paused: state.paused || false,
         recordedDay: state.dayKey || null, positions, summary, closedTrades: trades,
         config: { riskPct: bot.CFG.riskPct, maxOpen: bot.CFG.maxOpen, dailyLossLimitPct: bot.CFG.dailyLossLimitPct,
@@ -142,6 +143,16 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
   }
   const router = Router();
   router.get('/snapshot', (_req,res) => res.json({ data: snapshot() }));
+  router.post('/manager/review', async (_req,res)=>{
+    if (!manager) return res.status(503).json({ error:'Gerente indisponível neste servidor.' });
+    const id = randomUUID();
+    try {
+      const promise = manager.review(snapshot()); publish();
+      const review = await promise;
+      event('ceo', 'manager.review', `Parecer do gerente (Claude): ${review.resumo.slice(0, 120)}`, id);
+      publish(); res.json({ data: review });
+    } catch (e) { publish(); res.status(e.status || 502).json({ error: e.message }); }
+  });
   router.post('/school/run', async (_req,res)=>{
     if (!school) return res.status(503).json({ error:'Escola indisponível neste servidor.' });
     if (school.snapshot().running) return res.status(409).json({ error:'A escola já está avaliando.' });

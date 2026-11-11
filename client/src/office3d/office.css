@@ -131,3 +131,18 @@
 .school-promo p{margin:0 0 6px;font-size:11px;line-height:1.6;color:#c1d0d5}
 .school-promo small{font-size:9px;line-height:1.5;color:#7d949f}
 @media(max-width:650px){.school-board header{flex-direction:column}.school-run{align-items:flex-start}}
+/* Gerente (Claude) */
+.manager-card{background:var(--panel,#16232b);border:1px solid var(--line,#2a3a44);border-left:3px solid #d97757;border-radius:10px;padding:14px 16px;margin:0 0 18px}
+.manager-card header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:10px}
+.manager-card h3{font:650 15px 'Manrope',sans-serif;margin:5px 0 4px;color:#e6eef0}
+.manager-card header small,.manager-body>small{font-size:9px;line-height:1.5;color:#7d949f}
+.manager-card code{font-family:'IBM Plex Mono',monospace;font-size:10px}
+.manager-summary{font-size:13px;line-height:1.6;color:#dfe8ea;margin:0 0 10px}
+.manager-body ul{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:6px}
+.manager-body ul li{display:grid;grid-template-columns:90px 64px 1fr;gap:10px;align-items:baseline;font-size:11px;color:#c1d0d5;padding:7px 9px;background:#111e28;border-radius:6px;border-left:3px solid #94a3b8}
+.manager-body ul li b{font-weight:600;color:#e6eef0}.manager-body ul li em{font-style:normal;font-size:10px;font-weight:700}
+.manager-body .mg-ok{border-left-color:#4ade80}.mg-ok em{color:#4ade80}
+.manager-body .mg-atencao{border-left-color:#fbbf24}.mg-atencao em{color:#fbbf24}
+.manager-body .mg-alerta{border-left-color:#ef4444}.mg-alerta em{color:#ef4444}
+.manager-body ol{list-style:decimal;margin:6px 0 10px;padding-left:18px;font-size:11px;line-height:1.7;color:#c1d0d5}
+@media(max-width:650px){.manager-card header{flex-direction:column}.manager-body ul li{grid-template-columns:1fr}}

@@ -25,6 +25,7 @@ import { chatLLM, AI_ENABLED, AI_MODEL } from "./services/ai.js";
 import * as bot from "./services/bot.js";
 import { getPositions as demoPositions, getEquity as demoEquity } from "./services/bybit-demo.js";
 import { createOffice } from "./services/office.js";
+import { createManager } from "./services/manager.js";
 
 const app = express();
 // Senha de acesso (HTTP Basic) para tudo menos /api/health. Obrigatória fora do loopback.
@@ -474,6 +475,8 @@ app.post("/api/bot/resume", (req, res) => {
 // Escritório: observação e pesquisa; nenhum comando de execução é exposto aqui.
 const office = createOffice({
   bot, analyze: runStrategy, chat: chatLLM, aiEnabled: AI_ENABLED,
+  // Gerente (Claude): parecer só leitura, sob demanda. Precisa de ANTHROPIC_API_KEY.
+  manager: createManager({ dataDir: new URL('../data/', import.meta.url) }),
   // Escola: 1.000 velas de 1h + HTF 4h alinhado pelo FECHAMENTO (sem lookahead).
   loadSchoolInputs: async (symbol) => {
     const inputs = await btInputs({ symbol, interval: '60', limit: '1000', htf: '1' });

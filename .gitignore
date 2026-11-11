@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/dist-ssr
+**/.env
+**/.env.local
+**/.env.*.local
+*.log
+npm-debug.log*
+server/backtests/**/*.json
+server/data/
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+.tools/

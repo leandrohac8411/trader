@@ -1,0 +1,9 @@
+fly.toml**/node_modules
+client/.env*
+server/.env*
+.git
+.gitignore
+*.log
+Dockerfile
+fly.toml
+.vscode

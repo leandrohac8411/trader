@@ -192,6 +192,8 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
         if (item.type === 'closed') say('trader', `Fechei ${sym}. Registrado.`);
         if (item.type === 'would_open') say('trader', `Entraria em ${sym} (dry-run)`);
         if (item.type === 'error') say('auditor', 'Erro no log do bot!');
+        if (item.type === 'approved') say('risk', `Aprovado: ${sym} ✓`);
+        if (item.type === 'blocked') say('risk', `Barrado: ${sym} ✗`);
       } else if (item.type === 'task.started') say(item.agentId, 'Deixa comigo!', 4000);
       else if (item.type === 'task.completed') say(item.agentId, 'Pronto!', 4000);
       else if (item.type === 'task.failed') say(item.agentId, 'Ih, falhou…', 5000);
@@ -1013,6 +1015,12 @@ function drawRisk(panel, data) {
   ctx.fillStyle = '#fff';
   ctx.font = '800 28px sans-serif';
   ctx.fillText(mood?.cooldown ? `TRAVA ATIVA · ${mood.cooldownReason}` : 'SEM TRAVAS ATIVAS', 40, 440, 840);
+  // Última proposta do bot e a decisão do Ricardo (checklist do bot).
+  const last = data?.proposals?.[0];
+  ctx.font = '700 22px sans-serif';
+  ctx.fillStyle = !last ? '#8b7da3' : last.decision === 'approved' ? '#4ade80' : '#f87171';
+  ctx.fillText(!last ? 'ÚLTIMA PROPOSTA: nenhuma registrada'
+    : `ÚLTIMA PROPOSTA: ${last.symbol?.replace('USDT', '')} ${last.dir || ''} · ${last.decision === 'approved' ? 'APROVADA' : `BARRADA · ${last.reason || ''}`}`, 40, 388, 840);
   rows.forEach(([k, v], i) => {
     const y = 120 + i * 56;
     ctx.fillStyle = '#251c33';

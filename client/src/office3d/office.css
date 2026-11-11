@@ -146,3 +146,21 @@
 .manager-body .mg-alerta{border-left-color:#ef4444}.mg-alerta em{color:#ef4444}
 .manager-body ol{list-style:decimal;margin:6px 0 10px;padding-left:18px;font-size:11px;line-height:1.7;color:#c1d0d5}
 @media(max-width:650px){.manager-card header{flex-direction:column}.manager-body ul li{grid-template-columns:1fr}}
+/* Propostas do bot (Ricardo) */
+.proposals-card{background:var(--panel,#16232b);border:1px solid var(--line,#2a3a44);border-left:3px solid #c6a7ef;border-radius:10px;padding:14px 16px;margin:0 0 18px}
+.proposals-card header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:10px}
+.proposals-card h3{font:650 15px 'Manrope',sans-serif;margin:5px 0 4px;color:#e6eef0}
+.proposals-card header small{font-size:9px;line-height:1.5;color:#7d949f}
+.proposals-tally{text-align:right;font-size:11px;color:#c1d0d5;flex-shrink:0;display:flex;flex-direction:column;gap:3px}
+.proposals-tally b{font:700 15px 'IBM Plex Mono',monospace;color:#e6eef0}
+.proposals-list{list-style:none;margin:0;padding:0;display:grid;gap:7px;max-height:340px;overflow-y:auto}
+.proposals-list li{background:#111e28;border-radius:7px;padding:8px 10px;border-left:3px solid #4ade80}
+.proposals-list li.is-blocked{border-left-color:#ef4444}
+.proposal-head{display:flex;gap:10px;align-items:baseline;font-size:11px;color:#c1d0d5}
+.proposal-head b{font-size:11px;color:#4ade80}.is-blocked .proposal-head b{color:#f87171}
+.proposal-head small{margin-left:auto;font:9px 'IBM Plex Mono',monospace;color:#6f8996}
+.proposals-list p{margin:5px 0 0;font-size:10px;color:#fca5a5}
+.proposal-checks{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.proposal-checks span{font-size:9px;padding:2px 6px;border-radius:4px;background:#1b2a33;color:#9fd9b4}
+.proposal-checks span.no{background:#3c2b29;color:#fca5a5}
+@media(max-width:650px){.proposals-card header{flex-direction:column}.proposals-tally{text-align:left}}

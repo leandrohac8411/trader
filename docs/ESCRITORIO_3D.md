@@ -60,6 +60,13 @@ Cena 100% procedural em blocos (Three.js), sem modelos externos: o escritório f
 - Na cena: a antiga sala de operações virou a sala de aula (CAM 10), com a lousa do ranking e um crachá por aluno (cor = situação; ★ candidato; 🎓 pronto). Sofia é a professora e comenta promoções. No painel, a seção “Escola de traders” abaixo das metas.
 - Primeira avaliação real (11/11/2026): os seis alunos tiveram expectativa negativa no estudo, em linha com a auditoria de um ano. Ninguém foi promovido.
 
+## Proposta → aprovação → execução
+
+- Cada entrada do bot demo vira uma **proposta** (ativo, direção, entrada, stop, alvo, score, risco, tamanho). Antes de qualquer ordem, o Ricardo confere 8 limites em `server/src/services/approval.js` (testado): score acima do gate, stop e alvo do lado certo (stop a no máximo 15%), risco ≤ 2× a base, tamanho mínimo da corretora, notional abaixo do teto, perda no stop dentro do risco, vaga de posição livre (dry-run não ocupa vaga) e nenhuma posição no mesmo ativo.
+- **Aprovada**: o bot segue como antes (dry-run registra o que faria; demo envia a ordem com stop e TP1). **Barrada**: nada é enviado; o motivo fica no log do bot (`blocked`, só quando o motivo muda, para não repetir a cada minuto).
+- A aprovação é automática e acontece dentro do bot. O escritório continua sem botão de execução: só mostra as decisões (painel “Propostas do bot demo”, linha “Última proposta” no painel de risco, balões do Ricardo e ficha).
+- A trava de perda diária e a pausa continuam antes de tudo: com elas ativas o bot nem gera propostas.
+
 ## Gerente (Claude)
 
 - `server/src/services/manager.js` (testado com cliente falso): sob demanda, pelo botão “Pedir parecer” no painel, o Claude (`claude-opus-5-5`, ajustável com `MANAGER_MODEL`) lê um resumo do snapshot — humor do Lucas, a regra, a meta, conquistas, sinais ao vivo, a escola e os últimos eventos — e devolve um parecer em JSON (resumo, pontos por área com OK/atenção/alerta, até 3 próximos passos).
@@ -100,7 +107,7 @@ IDs: `ceo`, `analyst`, `risk`, `trader`, `scientist`, `auditor`.
 
 ## Limites deste MVP
 
-O monitor da Alice inicia junto com o servidor e continua funcionando sem o navegador aberto. Os outros agentes continuam disponíveis para consultas. O ciclo proposta → aprovação → execução ainda não foi conectado ao escritório. As rotas novas são somente observação e pesquisa; as rotas antigas do bot não foram alteradas.
+O monitor da Alice inicia junto com o servidor e continua funcionando sem o navegador aberto. Os outros agentes continuam disponíveis para consultas. O ciclo proposta → aprovação → execução roda dentro do bot (aprovação automática pelo checklist do Ricardo); o escritório só observa. As rotas antigas do bot não foram alteradas.
 
 O radar mostra entrada de compra/venda, preparando, formando ou aguardar. A retirada de um sinal também gera aviso. São sinais da estratégia, não ordens executadas. Leituras com falha ou sem atualização por dois ciclos deixam de ser apresentadas como entradas válidas. Os ciclos não se sobrepõem e cada requisição possui timeout e cancelamento.
 

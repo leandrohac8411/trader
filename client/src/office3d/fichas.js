@@ -20,7 +20,11 @@ export function liveStat(id, s) {
     const live = (s.monitor?.items || []).filter(i => !i.stale && !i.error && ['LONG', 'SHORT'].includes(i.signal)).length;
     return `${live} sinal(is) de entrada agora`;
   }
-  if (id === 'risk') return game ? `Risco ${n(game.ladder.riskPct)}% · ${game.ladder.name}${game.ladder.appliedToBot ? '' : ' (só no placar)'}` : '—';
+  if (id === 'risk') {
+    const p = s.proposals || [];
+    const tally = p.length ? ` · ${p.filter(x => x.decision === 'approved').length}/${p.length} propostas aprovadas` : '';
+    return game ? `Risco ${n(game.ladder.riskPct)}% · ${game.ladder.name}${game.ladder.appliedToBot ? '' : ' (só no placar)'}${tally}` : '—';
+  }
   if (id === 'trader') return mood ? `Humor: ${mood.label}${mood.cooldown ? ' · no lounge' : ''}` : '—';
   if (id === 'scientist') {
     const r = s.agents?.find(a => a.id === 'scientist')?.result;

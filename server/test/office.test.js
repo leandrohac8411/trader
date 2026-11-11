@@ -61,7 +61,8 @@ test('upstream errors become truthful failure states without leaking secrets',as
 test('risk review never claims approval; executor never submits orders',async t=>{
   const office=setup(t);
   const risk=await office.run('risk'),trader=await office.run('trader');
-  assert.ok(risk.items.some(s=>s.includes('Nenhuma proposta aprovada')));
+  assert.ok(risk.items.some(s=>s.includes('Esta consulta não aprova nada')));
+  assert.ok(risk.items.some(s=>s.includes('0 aprovadas e 0 barradas')));
   assert.ok(trader.items.some(s=>s.includes('não envia ordens')));
 });
 test('HTTP routes reject chat without configured AI and return the real snapshot',async t=>{
@@ -95,4 +96,20 @@ test('SSE emits a real snapshot and releases the connection on disconnect',async
   const body=new TextDecoder().decode(first.value);
   assert.match(body,/event: snapshot/);assert.match(body,/"reconciled":false/);
   controller.abort();await reader.cancel().catch(()=>{});
+});
+test('proposals show Ricardo decisions with reason, routed to the risk agent',t=>{
+  const events=[
+    {ts:2000,type:'approved',by:'risk',symbol:'ETHUSDT',tf:'60',dir:'LONG',probability:90,riskPct:1,notional:900,riskUsd:20,checks:[{id:'gate',label:'Score acima do gate',ok:true,detail:'score 90 · gate 85'}]},
+    {ts:3000,type:'blocked',by:'risk',symbol:'BTCUSDT',tf:'240',dir:'SHORT',probability:88,reason:'Vaga de posição livre: 3/3 abertas',checks:[{id:'maxOpen',label:'Vaga de posição livre',ok:false,detail:'3/3 abertas'}]},
+  ];
+  const bot={CFG:{enabled:false,dryRun:false,riskPct:1,maxOpen:3,dailyLossLimitPct:4,minProb:85,maxNotionalPct:.2},
+    loadState:()=>({keys:{}}),readTrades:()=>[],readEvents:()=>events,aggregateTrades:()=>({n:0,winRate:0,expectancyR:0})};
+  const s=setup(t,{bot}).snapshot();
+  assert.equal(s.proposals.length,2);
+  assert.equal(s.proposals[0].decision,'blocked');
+  assert.match(s.proposals[0].reason,/3\/3/);
+  assert.equal(s.proposals[1].checks[0].ok,true);
+  const blocked=s.events.find(e=>e.message.includes('barrada'));
+  assert.equal(blocked.agentId,'risk');
+  assert.match(blocked.message,/barrada pelo Ricardo · score 88 · Vaga de posição livre/);
 });

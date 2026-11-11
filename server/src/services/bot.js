@@ -9,6 +9,7 @@ import { analyzeCandles, higherTF } from "./strategy.js";
 import * as demo from "./bybit-demo.js";
 import { computeLadder } from "./game.js";
 import { readPromotion } from "./school.js";
+import { reviewProposal, proposalSummary } from "./approval.js";
 
 const DATA_DIR = new URL("../../data/", import.meta.url);
 const STATE_FILE = new URL("bot-state.json", DATA_DIR);
@@ -378,22 +379,21 @@ export async function tickOnce() {
           !ks.open &&
           (signal === "LONG" || signal === "SHORT") &&
           a.levels.stop != null &&
-          (CFG.dryRun || openCount < CFG.maxOpen) &&
           opensThisTick < CFG.maxOpensPerTick &&
           isFreshSignal({
             signal,
             lastSignal: ks.lastSignal,
             lastExitTs: ks.lastExitTs,
             cd: cooldownMs(tf),
-          }) &&
-          !posBySymbol[symbol] // não empilha com posição já aberta no símbolo
+          })
         ) {
           try {
             const instr = await demo.getInstrument(symbol);
             const side = signal === "LONG" ? "Buy" : "Sell";
+            const riskPct = effectiveRiskPct({ trades: readTrades(500), equityBase: s.dayStartEquity });
             const sz = sizePosition({
               equity,
-              riskPct: effectiveRiskPct({ trades: readTrades(500), equityBase: s.dayStartEquity }),
+              riskPct,
               entry: a.price,
               stop: a.levels.stop,
               qtyStep: instr.qtyStep,
@@ -403,13 +403,22 @@ export async function tickOnce() {
               maxNotionalPct: CFG.maxNotionalPct,
             });
 
-            if (!sz.ok) {
-              log.push(`${key}: sem entrada (${sz.reason})`);
-              if (ks.lastBlockReason !== sz.reason) {
-                appendEvent({ type: "blocked", symbol, tf, signal, probability: a.probability, reason: sz.reason });
-                ks.lastBlockReason = sz.reason;
+            // Proposta → Ricardo confere os limites → aprova ou barra (com motivo).
+            const proposal = {
+              symbol, tf, dir: signal, entry: a.price, stop: a.levels.stop, tp: a.levels.tp1,
+              probability: a.probability, gate: stratParams.minProbEntry ?? CFG.minProb, riskPct, equity, sizing: sz,
+            };
+            const decision = reviewProposal({ proposal, cfg: CFG, openCount, symbolBusy: !!posBySymbol[symbol] });
+
+            if (!decision.approved) {
+              log.push(`${key}: barrada pelo risco (${decision.reason})`);
+              // registra só quando o motivo muda (evita repetir a cada tick)
+              if (ks.lastBlockReason !== decision.reason) {
+                appendEvent({ type: "blocked", by: "risk", reason: decision.reason, checks: decision.checks, ...proposalSummary(proposal) });
+                ks.lastBlockReason = decision.reason;
               }
             } else if (CFG.dryRun) {
+              appendEvent({ type: "approved", by: "risk", checks: decision.checks, ...proposalSummary(proposal) });
               // modo seguro: só registra o que FARIA (e entra em cooldown pra não repetir)
               ks.lastBlockReason = null;
               ks.lastExitTs = Date.now();
@@ -430,6 +439,7 @@ export async function tickOnce() {
               });
               log.push(`${key}: [DRY] abriria ${side} qty ${sz.qty} notional $${sz.notional.toFixed(0)} risco $${sz.riskUsd.toFixed(0)}`);
             } else {
+              appendEvent({ type: "approved", by: "risk", checks: decision.checks, ...proposalSummary(proposal) });
               ks.lastBlockReason = null;
               if (!leverageSet.has(symbol)) {
                 await demo.setLeverage(symbol, CFG.leverage);

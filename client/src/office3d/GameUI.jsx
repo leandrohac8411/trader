@@ -120,3 +120,23 @@ export function ManagerCard({ manager, onReview, disabled }) {
     </div>}
   </section>;
 }
+
+export function ProposalsCard({ proposals, bot }) {
+  if (!proposals) return null;
+  const approved = proposals.filter(p => p.decision === 'approved').length;
+  return <section className="proposals-card" aria-label="Propostas do bot">
+    <header>
+      <div><span className="goal-eyebrow">PROPOSTA → APROVAÇÃO → EXECUÇÃO · RICARDO</span>
+        <h3>Propostas do bot demo</h3>
+        <small>Cada entrada vira uma proposta; o Ricardo confere 8 limites (gate, stop/alvo, risco, tamanho, notional, perda no stop, vagas, ativo livre) e só então o bot executa. Barradas não viram ordem.</small></div>
+      <div className="proposals-tally"><span><b>{approved}</b> aprovadas · <b>{proposals.length - approved}</b> barradas</span><small>últimas {proposals.length}</small></div>
+    </header>
+    {!proposals.length ? <p className="quiet-copy">{bot?.enabled ? 'Nenhuma proposta registrada ainda: o bot só propõe quando surge sinal novo acima do gate.' : 'Nenhuma proposta: a execução demo está desligada neste servidor (DEMO_BOT=0).'}</p>
+      : <ul className="proposals-list">{proposals.map(p => <li key={`${p.ts}-${p.symbol}`} className={p.decision === 'approved' ? 'is-ok' : 'is-blocked'}>
+        <div className="proposal-head"><b>{p.decision === 'approved' ? '✓ Aprovada' : '✗ Barrada'}</b><span>{p.symbol} · {p.tf === '240' ? '4h' : p.tf === '60' ? '1h' : `${p.tf}m`} · {p.dir}</span>
+          <small>{new Date(p.ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small></div>
+        {p.reason && <p>{p.reason}</p>}
+        {p.checks.length > 0 && <div className="proposal-checks">{p.checks.map(c => <span key={c.label} className={c.ok ? 'ok' : 'no'} title={c.detail}>{c.ok ? '✓' : '✗'} {c.label}</span>)}</div>}
+      </li>)}</ul>}
+  </section>;
+}

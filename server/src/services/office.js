@@ -52,7 +52,7 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
     const state = bot.loadState();
     const trades = bot.readTrades(100);
     const botEvents = bot.readEvents(60).map((e, i) => ({
-      id: `bot-${e.ts}-${i}`, ts: e.ts, agentId: ['error', 'blocked'].includes(e.type) ? 'auditor' : 'trader',
+      id: `bot-${e.ts}-${i}`, ts: e.ts, agentId: e.type === 'error' ? 'auditor' : ['approved', 'blocked'].includes(e.type) ? 'risk' : 'trader',
       type: e.type, source: 'bot', message: describeBotEvent(e),
     }));
     const history = readLines(eventsFile, 60);
@@ -66,6 +66,11 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
       crew: { trader: { ...trader, source: 'local-history' } },
       game: gameState(trades, state, bot.CFG),
       school: school ? school.snapshot() : null,
+      // Propostas do bot e a decisão do Ricardo (registro local do bot).
+      proposals: bot.readEvents(200).filter(e => ['approved', 'blocked'].includes(e.type)).slice(-10).reverse()
+        .map(e => ({ ts: e.ts, decision: e.type, symbol: e.symbol, tf: e.tf, dir: e.dir || e.signal, probability: e.probability,
+          riskPct: e.riskPct, notional: e.notional, riskUsd: e.riskUsd, reason: e.reason || null,
+          checks: Array.isArray(e.checks) ? e.checks.map(c => ({ label: c.label, ok: !!c.ok, detail: c.detail })) : [] })),
       manager: manager ? manager.snapshot() : null,
       bot: { enabled: bot.CFG.enabled, dryRun: bot.CFG.dryRun, paused: state.paused || false,
         recordedDay: state.dayKey || null, positions, summary, closedTrades: trades,
@@ -111,7 +116,10 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
         if (agentId === 'risk') result = { kind: 'review', title: 'Revisão dos controles',
           items: [`Risco configurado: ${s.bot.config.riskPct}% por operação.`, `Limite de posições: ${s.bot.config.maxOpen}.`,
             `Limite de perda diária: ${s.bot.config.dailyLossLimitPct}%.`, `Teto por posição: ${s.bot.config.maxNotionalPct*100}% da conta.`,
-            'Revisão local: saldo e posições não reconciliados com a corretora. Nenhuma proposta aprovada.'] };
+            `Propostas recentes: ${s.proposals.filter(p=>p.decision==='approved').length} aprovadas e ${s.proposals.filter(p=>p.decision==='blocked').length} barradas (últimas ${s.proposals.length}).`,
+          ...(s.proposals[0] ? [`Última: ${s.proposals[0].symbol} — ${s.proposals[0].decision==='approved'?'aprovada':`barrada (${s.proposals[0].reason})`}.`] : []),
+          'Esta consulta não aprova nada: as decisões vêm do checklist do bot, registradas no log local.',
+          'Revisão local: saldo e posições não reconciliados com a corretora.'] };
         if (agentId === 'trader') result = { kind: 'review', title: 'Execução registrada', items: [
           `Bot ${s.bot.enabled ? 'habilitado' : 'desligado'} na configuração deste servidor.`,
           `${s.bot.positions.length} posições no estado local; não confirmadas na corretora.`,
@@ -210,7 +218,9 @@ function gameState(trades, state, cfg) {
 function describeBotEvent(e) {
   const prefix = [e.symbol, e.tf ? `${e.tf}m` : ''].filter(Boolean).join(' · ');
   const labels = { opened:'Abertura demo registrada',closed:'Fechamento registrado',would_open:'Entrada simulada em dry-run',
-    stage:'Mudança de estágio',watching:'Monitoramento registrado',blocked:'Entrada bloqueada',error:'Falha de execução' };
+    stage:'Mudança de estágio',watching:'Monitoramento registrado',blocked:'Proposta barrada pelo Ricardo',approved:'Proposta aprovada pelo Ricardo',error:'Falha de execução' };
   // Deliberately omit arbitrary provider error strings from the event feed/LLM.
-  return `${prefix ? prefix + ' — ' : ''}${labels[e.type] || 'Evento do bot'}${e.probability != null ? ` · score ${e.probability}` : ''}`;
+  // O motivo de bloqueio vem do checklist local (approval.js), não da corretora.
+  const why = e.type === 'blocked' && e.by === 'risk' && typeof e.reason === 'string' ? ` · ${e.reason.slice(0, 120)}` : '';
+  return `${prefix ? prefix + ' — ' : ''}${labels[e.type] || 'Evento do bot'}${e.probability != null ? ` · score ${e.probability}` : ''}${why}`;
 }

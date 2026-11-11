@@ -6,7 +6,7 @@ import AgentWorkspace from './AgentWorkspace.jsx';
 import './office.css';
 import { CHARACTER_ATLAS, CHARACTER_CELLS } from './characters.js';
 import { CAMERAS } from './createOfficeScene.js';
-import { Ficha, GoalsStrip, SchoolBoard, ManagerCard } from './GameUI.jsx';
+import { Ficha, GoalsStrip, SchoolBoard, ManagerCard, ProposalsCard } from './GameUI.jsx';
 
 const TEAM=[
   {id:'ceo',name:'Arthur',role:'CEO',color:'#e6ad63',task:'Consolida resultados e incidentes.',action:'Preparar relatório'},
@@ -133,6 +133,7 @@ export default function Office({onDashboard}) {
           onSelect={market=>{setSymbol(market);select('analyst');setTab('activity');setAnalysisView('live');}}/>}
         {!focused&&<GoalsStrip game={snapshot?.game} mood={snapshot?.crew?.trader}/>}
         {!focused&&<ManagerCard manager={snapshot?.manager} onReview={reviewManager} disabled={!connected}/>}
+        {!focused&&<ProposalsCard proposals={snapshot?.proposals} bot={snapshot?.bot}/>}
         {!focused&&<SchoolBoard school={snapshot?.school} onRun={runSchool} disabled={!connected}/>}
         <div className={`office-floor-layout ${focused?'office-focused-layout':''} ${focused&&selected==='trader'?'agent-focus-trader':''}`}>
           {focused?<AgentWorkspace key={focused} agent={agent} snapshot={snapshot} connected={connected}/>:<section className="floor-column" aria-label="Escritório interativo">

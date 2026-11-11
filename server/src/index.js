@@ -7,7 +7,8 @@ import "dotenv/config";
 import nodemailer from "nodemailer";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { basicAuth, isLoopback } from "./auth.js";
+import { basicAuth, isLoopback, safeEqual } from "./auth.js";
+import { configureFromEnv, withContext, hydrate, persist, withLock, isRedis } from "./services/datafs.js";
 
 import {
   getGlobalMetrics,
@@ -28,10 +29,40 @@ import { createOffice } from "./services/office.js";
 import { createManager } from "./services/manager.js";
 
 const app = express();
-// Senha de acesso (HTTP Basic) para tudo menos /api/health. Obrigatória fora do loopback.
+// Vercel (serverless): sem processo ligado; o bot roda quando /api/bot/tick é chamado
+// (cron-job.org) e os dados ficam no Upstash Redis (services/datafs.js).
+const SERVERLESS = process.env.VERCEL === "1";
+const storage = configureFromEnv();
+// Senha de acesso (HTTP Basic) para tudo menos /api/health. Obrigatória fora do loopback e no Vercel.
 const APP_USER = process.env.APP_USER || "admin";
 const APP_PASSWORD = process.env.APP_PASSWORD || "";
-if (APP_PASSWORD) app.use(basicAuth({ user: APP_USER, password: APP_PASSWORD, open: ["/api/health"] }));
+const TICK_SECRET = process.env.TICK_SECRET || "";
+if (SERVERLESS) {
+  // Falha fechado: sem senha ou sem banco, nada além do /api/health responde.
+  app.use((req, res, next) => {
+    if (req.path === "/api/health") return next();
+    if (!APP_PASSWORD) return res.status(503).json({ error: "Defina APP_PASSWORD nas variáveis do projeto no Vercel." });
+    if (!storage.redis) return res.status(503).json({ error: "Conecte o Upstash Redis ao projeto (Storage → Upstash)." });
+    next();
+  });
+}
+if (APP_PASSWORD) app.use(basicAuth({ user: APP_USER, password: APP_PASSWORD, open: ["/api/health", "/api/bot/tick"] }));
+// Modo Redis: cada requisição carrega os dados no começo e grava o que mudou antes de responder.
+app.use((req, res, next) => {
+  if (!isRedis()) return next();
+  withContext(async () => {
+    try { await hydrate(); } catch { return res.status(503).json({ error: "Armazenamento indisponível agora." }); }
+    const end = res.end.bind(res);
+    let flushed = false;
+    res.end = (...args) => {
+      if (flushed) return end(...args);
+      flushed = true;
+      persist().catch((e) => console.error("persist falhou:", e.message)).finally(() => end(...args));
+      return res;
+    };
+    next();
+  });
+});
 app.use(cors());
 app.use(morgan("dev"));
 app.use(express.json());
@@ -61,6 +92,9 @@ let lastEmailTs = 0;
 app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
+    runtime: SERVERLESS ? "vercel" : "server",
+    storage: isRedis() ? "redis" : "files",
+    ready: !SERVERLESS || (!!APP_PASSWORD && storage.redis && !!TICK_SECRET),
     time: new Date().toISOString(),
     ai: { enabled: AI_ENABLED, model: AI_ENABLED ? AI_MODEL : null },
     alerts: { smtpEnabled, ALERT_CONSENSUS },
@@ -472,9 +506,25 @@ app.post("/api/bot/resume", (req, res) => {
   res.json({ paused: bot.setPaused(false) });
 });
 
+// Tick do bot (Vercel): chamado a cada poucos minutos pelo cron-job.org com a chave TICK_SECRET.
+// Uma trava no Redis impede dois ticks ao mesmo tempo (= ordem duplicada).
+app.all("/api/bot/tick", async (req, res) => {
+  const key = req.get("x-tick-key") || String(req.query.key || "");
+  if (!TICK_SECRET || !key || !safeEqual(key, TICK_SECRET)) return res.status(401).json({ error: "chave do tick inválida" });
+  const out = await withLock("tick", 280, async () => {
+    let b, o;
+    try { b = await bot.tickOnce(); } catch { b = { failed: true }; }
+    try { o = await office.cycle(); } catch { o = { failed: true }; }
+    // Resumo mínimo: nada de logs/erros da corretora na resposta.
+    const botSummary = b.failed ? { failed: true } : b.skipped ? { skipped: b.skipped } : b.paused ? { paused: b.paused } : { ok: true, open: b.open };
+    return { bot: botSummary, office: o };
+  });
+  res.json(out.ran ? { ok: true, ...out.value } : { ok: false, busy: "outro tick em andamento" });
+});
+
 // Escritório: observação e pesquisa; nenhum comando de execução é exposto aqui.
 const office = createOffice({
-  bot, analyze: runStrategy, chat: chatLLM, aiEnabled: AI_ENABLED,
+  bot, analyze: runStrategy, chat: chatLLM, aiEnabled: AI_ENABLED, serverless: SERVERLESS,
   // Gerente (Claude): parecer só leitura, sob demanda. Precisa de ANTHROPIC_API_KEY.
   manager: createManager({ dataDir: new URL('../data/', import.meta.url) }),
   // Saldo e posições da conta DEMO (bybit-demo.js só aceita api-demo.bybit.com).
@@ -521,22 +571,25 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err?.message || "internal error" });
 });
 
-const port = process.env.PORT || 4000;
-// Local by default; set HOST=0.0.0.0 only behind auth (e.g. container/Fly).
-const host = process.env.HOST || "127.0.0.1";
-if (!isLoopback(host) && !APP_PASSWORD) {
-  // Fail closed: nunca expor escritório e rotas do bot sem senha.
-  console.error(`Recusando iniciar em ${host} sem APP_PASSWORD. Defina APP_PASSWORD (fly secrets set APP_PASSWORD=...).`);
-  process.exit(1);
+// No Vercel não há servidor ligado: o app é exportado e roda a cada requisição.
+if (!SERVERLESS) {
+  const port = process.env.PORT || 4000;
+  // Local by default; set HOST=0.0.0.0 only behind auth (e.g. container/Fly).
+  const host = process.env.HOST || "127.0.0.1";
+  if (!isLoopback(host) && !APP_PASSWORD) {
+    // Fail closed: nunca expor escritório e rotas do bot sem senha.
+    console.error(`Recusando iniciar em ${host} sem APP_PASSWORD. Defina APP_PASSWORD (fly secrets set APP_PASSWORD=...).`);
+    process.exit(1);
+  }
+  const server = app.listen(port, host, () => {
+    console.log(`Server on http://${host}:${port}`);
+    office.start();
+    bot.startBot();
+  });
+  const shutdown = () => { office.stop(); server.close(); server.closeIdleConnections(); };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
-const server = app.listen(port, host, () => {
-  console.log(`Server on http://${host}:${port}`);
-  office.start();
-  bot.startBot();
-});
 
-const shutdown=()=>{office.stop();server.close();server.closeIdleConnections();};
-process.on('SIGINT',shutdown);
-process.on('SIGTERM',shutdown);
-
+export default app;
 export { app, runStrategy };

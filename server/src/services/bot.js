@@ -3,7 +3,7 @@
 // Roda junto com o servidor Express. Abre/fecha posições demo conforme a estratégia
 // calibrada e registra cada trade fechado pra comparar com o backtest.
 
-import { mkdirSync, readFileSync, writeFileSync, appendFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, appendFileSync, existsSync } from "./datafs.js";
 import { getKlines } from "./bybit.js";
 import { analyzeCandles, higherTF } from "./strategy.js";
 import * as demo from "./bybit-demo.js";

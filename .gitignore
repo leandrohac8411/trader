@@ -13,3 +13,5 @@ server/data/
 !.vscode/extensions.json
 .idea
 .tools/
+vercel.env
+.vercel

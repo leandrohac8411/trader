@@ -4,6 +4,8 @@ import { timingSafeEqual, createHash } from "node:crypto";
 
 const digest = (v) => createHash("sha256").update(String(v)).digest();
 const same = (a, b) => timingSafeEqual(digest(a), digest(b));
+/** Comparação em tempo constante (para chaves/segredos). */
+export const safeEqual = (a, b) => same(a, b);
 
 export function isLoopback(host) {
   return ["127.0.0.1", "localhost", "::1", "[::1]"].includes(String(host).toLowerCase());

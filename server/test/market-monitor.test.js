@@ -70,3 +70,24 @@ test('changing timeframe mid-scan starts the new timeframe promptly',async t=>{
   m.start();await delay(20);m.configure('5');await delay(1300);
   assert.ok(calls.includes('5'),'new timeframe not scanned: '+calls);
 });
+
+test("exportState/importState preserve readings and change detection between invocations", async () => {
+  const { createMarketMonitor } = await import("../src/services/market-monitor.js");
+  const events = [];
+  const analyze = async ({ symbol }) => ({ signal: symbol === "BTCUSDT" ? "LONG" : "NEUTRAL", stage: "go", probability: 90, price: 10 });
+  const a = createMarketMonitor({ analyze, symbols: ["BTCUSDT", "ETHUSDT"], onEvent: (e) => events.push(e.type), scanMs: 300_000 });
+  a.importState(null);
+  await a.scan();
+  const saved = JSON.parse(JSON.stringify(a.exportState()));
+  assert.equal(saved.items.length, 2);
+  assert.equal(events.filter((t) => t === "signal.detected").length, 1);
+  const b = createMarketMonitor({ analyze, symbols: ["BTCUSDT", "ETHUSDT"], onEvent: (e) => events.push(e.type), scanMs: 300_000 });
+  b.importState(saved);
+  assert.equal(b.snapshot().enabled, true);
+  assert.equal(b.snapshot().items.length, 2);
+  await b.scan();
+  assert.equal(events.filter((t) => t === "signal.detected").length, 1); // sem alerta repetido
+  assert.equal(b.exportState().scanCount, 2);
+  assert.throws(() => b.setInterval("7"), /inválido/);
+  assert.equal(b.setInterval("60").interval, "60");
+});

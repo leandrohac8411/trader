@@ -5,7 +5,7 @@
 //   1) estudo  — primeiros 70% das velas (escolhe o candidato)
 //   2) prova   — últimos 30% (fora da amostra usada na escolha; só confirma/nega)
 //   3) papel   — trades que começaram DEPOIS que a escola abriu (forward real)
-import { readFileSync, existsSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync, appendFileSync } from "./datafs.js";
 import { runBacktest } from "./backtest.js";
 
 const round = (n, p = 3) => (Number.isFinite(+n) ? Number(Number(n).toFixed(p)) : 0);
@@ -268,8 +268,16 @@ export function createSchool({ loadInputs, dataDir, symbols = ["BTCUSDT", "ETHUS
     };
   }
 
+  // Serverless: recarrega o que outra execução gravou e diz se já é hora de reavaliar.
+  function reload() {
+    saved = readSchoolState(dataDir);
+    if (saved?.startedAt) startedAt = saved.startedAt;
+    result = saved?.students ? saved : null;
+  }
+  const due = () => !result?.lastRun || now() - result.lastRun >= everyMs;
+
   return {
-    run, snapshot,
+    run, snapshot, reload, due,
     start: (delay = 5_000) => schedule(delay),
     stop: () => { clearTimeout(timer); timer = null; nextRun = null; },
   };

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm --prefix server ci --omit=dev && npm --prefix client ci",
+  "buildCommand": "VITE_OFFICE_POLL=1 npm --prefix client run build",
+  "outputDirectory": "client/dist",
+  "regions": ["gru1"],
+  "functions": {
+    "api/index.mjs": { "maxDuration": 300 }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index?__path=:path*" }
+  ]
+}

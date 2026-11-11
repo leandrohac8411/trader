@@ -123,6 +123,32 @@ As posições e os encerramentos da estação continuam identificados como hist�
 
 IDs: `ceo`, `analyst`, `risk`, `trader`, `scientist`, `auditor`.
 
+## Publicar no Vercel (sem cartão)
+
+O Vercel não mantém processo ligado nem disco gravável, então lá o projeto roda assim:
+
+| Peça | Onde |
+|---|---|
+| Site (`client/dist`) e API (`api/index.mjs` → mesmo app Express) | Vercel, região São Paulo (`gru1`, em `vercel.json`) |
+| Dados (estado do bot, trades, eventos, escola, radar, parecer) | Upstash Redis (`server/src/services/datafs.js`) |
+| Bot + radar da Alice + escola | `GET /api/bot/tick?key=TICK_SECRET`, chamado pelo cron-job.org a cada 2 min |
+
+- Cada requisição carrega os dados do Redis e grava só o que mudou; requisições simultâneas têm memória separada.
+- Uma trava no Redis impede dois ticks ao mesmo tempo (= ordem duplicada). A resposta do tick não traz logs nem erros da corretora.
+- O site atualiza a cada 10 s (sem conexão aberta). Sem `APP_PASSWORD` ou sem o Redis conectado, só `/api/health` responde.
+- Localmente nada muda: arquivos em `server/data/` e o bot em loop (`npm start`).
+
+Passo a passo:
+
+1. **Vercel → Add New → Project**, importe o repositório do GitHub (as configurações vêm do `vercel.json`).
+2. **Storage → Upstash (Redis) → Connect** ao projeto. Ele cria `KV_REST_API_URL` e `KV_REST_API_TOKEN`.
+3. Rode `node scripts/vercel-env.mjs` e cole o conteúdo do `vercel.env` (fora do Git) em **Settings → Environment Variables**. Adicione também `APP_PASSWORD` (uma senha sua).
+4. **Redeploy**. Teste `https://SEU-PROJETO.vercel.app/api/health`: deve mostrar `"ready": true`.
+5. Copie `KV_REST_API_URL`/`KV_REST_API_TOKEN` para o `server/.env`, **desligue o bot local** e rode `node scripts/upload-data.mjs` (leva as posições abertas e o histórico).
+6. **cron-job.org** → criar tarefa: URL `https://SEU-PROJETO.vercel.app/api/bot/tick?key=<TICK_SECRET do vercel.env>`, a cada 2 minutos.
+
+**Nunca deixe o bot local e o do Vercel ligados juntos** na mesma conta demo. O plano grátis do Upstash tem limite de comandos por mês: o tick usa poucos por chamada, mas deixar o site aberto 24h também consome (1 leitura a cada 10 s).
+
 ## Limites deste MVP
 
 O monitor da Alice inicia junto com o servidor e continua funcionando sem o navegador aberto. Os outros agentes continuam disponíveis para consultas. O ciclo proposta → aprovação → execução roda dentro do bot (aprovação automática pelo checklist do Ricardo); o escritório só observa. As rotas antigas do bot não foram alteradas.

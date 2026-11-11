@@ -3,7 +3,7 @@
 // Só leitura: não tem ferramentas, não envia ordens e não muda configuração.
 // Roda apenas quando alguém pede (botão), para não gastar tokens em loop.
 import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "./datafs.js";
 
 export const MANAGER_MODEL = process.env.MANAGER_MODEL || "claude-opus-5-5";
 export const managerConfigured = () => !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
@@ -128,6 +128,7 @@ export function createManager({ client = null, dataDir, model = MANAGER_MODEL, e
 
   return {
     review,
+    reload: () => { try { last = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null; } catch { last = null; } },
     snapshot: () => ({ enabled, running, error, model, last }),
   };
 }

@@ -78,5 +78,23 @@ export function createMarketMonitor({ analyze, onChange=()=>{}, onEvent=()=>{}, 
     interval=String(tf);generation++;items=[];lastScan=null;alerts=[];previous.clear();controllers.forEach(c=>c.abort());
     schedule(running?1000:0);onChange();return snapshot();
   }
-  return {snapshot,scan,start,stop,configure};
+  // Serverless: o estado vive entre chamadas no armazenamento (não em memória).
+  function exportState() {
+    return {interval,items,alerts:alerts.slice(0,30),previous:[...previous],lastScan,scanCount};
+  }
+  function importState(st,{enabled:on=true}={}) {
+    enabled=on;
+    if(!st)return;
+    if(WATCH_INTERVALS.includes(String(st.interval)))interval=String(st.interval);
+    items=Array.isArray(st.items)?st.items:[];alerts=Array.isArray(st.alerts)?st.alerts:[];
+    previous.clear();for(const [k,v] of st.previous||[])previous.set(k,v);
+    lastScan=st.lastScan||null;scanCount=Number(st.scanCount)||0;
+    nextScan=lastScan?new Date(Date.parse(lastScan)+scanMs).toISOString():null;
+  }
+  function setInterval_(tf) {
+    if(!WATCH_INTERVALS.includes(String(tf)))throw Object.assign(Error('Período inválido.'),{status:400});
+    if(String(tf)!==interval){interval=String(tf);generation++;items=[];lastScan=null;alerts=[];previous.clear();}
+    return snapshot();
+  }
+  return {snapshot,scan,start,stop,configure,exportState,importState,setInterval:setInterval_};
 }

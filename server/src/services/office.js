@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readFileSync, existsSync, mkdirSync, appendFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, appendFileSync, writeFileSync } from './datafs.js';
 import { randomUUID } from 'node:crypto';
 import { createMarketMonitor } from './market-monitor.js';
 import { computeTraderMood } from './crew.js';
@@ -30,12 +30,14 @@ async function withDeadline(task, ms = 30_000) {
 }
 
 // Read-only adapter: no order, pause, resume, leverage or risk mutation methods.
-export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadSchoolInputs = null, manager = null, deskStatus = null, dataDir = new URL('../../data/', import.meta.url) }) {
+export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadSchoolInputs = null, manager = null, deskStatus = null, serverless = false, dataDir = new URL('../../data/', import.meta.url) }) {
   const jobs = new Map();
   const subscribers = new Set();
   const eventsFile = new URL('office-events.jsonl', dataDir);
   let timer;
-  const monitor=createMarketMonitor({ analyze,onChange:publish,
+  // Serverless (Vercel): sem loops; o radar roda a cada chamada do tick e o estado fica no armazenamento.
+  const monitorFile = new URL('monitor-state.json', dataDir);
+  const monitor=createMarketMonitor({ analyze,onChange:publish, ...(serverless ? { scanMs:Number(process.env.MONITOR_SCAN_MS || 300_000) } : {}),
     onEvent:e=>event(e.agentId,e.type,e.message,e.correlationId) });
   // Escola de traders: avaliação em papel; Sofia é a professora. Não envia ordens.
   const school = loadSchoolInputs ? createSchool({ loadInputs: loadSchoolInputs, dataDir,
@@ -49,7 +51,25 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
     if (lines.length >= 1000) writeFileSync(eventsFile, lines.slice(-500).map(e => JSON.stringify(e)).join('\n') + '\n');
     return item;
   }
+  function syncFromStore() {
+    if (!serverless) return;
+    let st = null;
+    try { st = existsSync(monitorFile) ? JSON.parse(readFileSync(monitorFile, 'utf8')) : null; } catch { st = null; }
+    monitor.importState(st);
+    school?.reload(); manager?.reload?.();
+  }
+  const saveMonitor = () => { mkdirSync(dataDir, { recursive: true }); writeFileSync(monitorFile, JSON.stringify(monitor.exportState())); };
+  /** Uma rodada do escritório (chamada pelo tick): radar da Alice e, se for hora, a escola. */
+  async function cycle() {
+    syncFromStore();
+    await monitor.scan();
+    saveMonitor();
+    let schoolRan = false;
+    if (school && (!serverless || school.due())) { await school.run(); schoolRan = true; }
+    return { markets: monitor.snapshot().items.length, schoolRan };
+  }
   function snapshot() {
+    syncFromStore();
     const state = bot.loadState();
     const trades = bot.readTrades(100);
     const botEvents = bot.readEvents(60).map((e, i) => ({
@@ -176,10 +196,17 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
     await school.run(); res.json({ data:school.snapshot() });
   });
   router.post('/monitor', (req,res)=>{
-    try {res.json({data:monitor.configure(req.body?.interval)});}
+    try {
+      if (serverless) { syncFromStore(); const data = monitor.setInterval(req.body?.interval); saveMonitor(); return res.json({ data }); }
+      res.json({data:monitor.configure(req.body?.interval)});}
     catch(e){res.status(e.status||400).json({error:e.message});}
   });
   router.get('/events', (req,res) => {
+    // Serverless não mantém conexão aberta: manda um snapshot e encerra (o site faz polling).
+    if (serverless) { res.set({ 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache' }); return res.end(`event: snapshot
+data: ${JSON.stringify(snapshot())}
+
+`); }
     if (subscribers.size >= 20) return res.status(503).json({ error: 'Limite de conexões atingido.' });
     res.set({ 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache', Connection:'keep-alive', 'X-Accel-Buffering':'no' });
     res.flushHeaders();
@@ -213,7 +240,7 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
     } catch { res.status(502).json({ error:'Não foi possível conversar com a IA. Tente novamente.' }); }
     finally { activeChats--; }
   });
-  return { router, snapshot, run, school, start:()=>{ monitor.start(); school?.start(); }, stop:()=>{
+  return { router, snapshot, run, school, cycle, start:()=>{ if (serverless) return; monitor.start(); school?.start(); }, stop:()=>{
     monitor.stop();school?.stop();clearInterval(timer);timer=null;subscribers.forEach(res=>res.end());subscribers.clear();
   } };
 }

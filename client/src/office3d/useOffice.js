@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { API } from '../services/api.js';
 
 const base = import.meta.env.VITE_API_BASE?.replace(/\/$/,'') || '';
+const POLL = import.meta.env.VITE_OFFICE_POLL === '1';
 export default function useOffice() {
   const [snapshot,setSnapshot]=useState(null);
   const [connection,setConnection]=useState('connecting');
@@ -9,11 +10,34 @@ export default function useOffice() {
   const reconnect=useRef(null);
   const openedAt=useRef(Date.now()),seenAlerts=useRef(new Set());
   const [notifications,setNotifications]=useState(()=>!('Notification' in window)?'unsupported':Notification.permission==='denied'?'denied':Notification.permission==='granted'&&localStorage.getItem('office-alerts')!=='off'?'on':'off');
+  // Browser notifications for new signals (same for SSE and polling).
+  const notify=useCallback(alerts=>{
+    for(const alert of alerts||[]){
+      if(seenAlerts.current.has(alert.id))continue;seenAlerts.current.add(alert.id);
+      if(alert.ts<openedAt.current||!['signal.detected','signal.withdrawn'].includes(alert.type))continue;
+      if('Notification' in window&&Notification.permission==='granted'&&localStorage.getItem('office-alerts')!=='off'){
+        try{new Notification(alert.type==='signal.detected'?'Novo sinal no escritório':'Sinal retirado — aguardar',{body:alert.message,tag:`office-${alert.symbol}-${alert.interval}`});}catch{/* In-app alerts remain available. */}
+      }
+    }
+    if(seenAlerts.current.size>500)seenAlerts.current=new Set((alerts||[]).map(a=>a.id));
+  },[]);
   const refresh=useCallback(async()=>{
     try {const json=await API.get('/api/office/snapshot');setSnapshot(json.data);setError('');reconnect.current?.();}
     catch {setError('Não foi possível consultar o servidor. Verifique se o backend está ligado.');}
   },[]);
+  // Vercel (serverless) não mantém conexão aberta: consulta o snapshot a cada 10 s.
   useEffect(()=>{
+    if(!POLL)return undefined;
+    let alive=true;
+    const load=async()=>{
+      try{const json=await API.get('/api/office/snapshot');if(!alive)return;setSnapshot(json.data);setConnection('connected');setError('');notify(json.data?.monitor?.alerts);}
+      catch{if(alive)setConnection('reconnecting');}
+    };
+    load();const timer=setInterval(load,10_000);
+    return()=>{alive=false;clearInterval(timer);};
+  },[notify]);
+  useEffect(()=>{
+    if(POLL)return undefined;
     let alive=true,last=Date.now(),stream;
     function connect(){
       stream?.close();last=Date.now();
@@ -21,14 +45,7 @@ export default function useOffice() {
       source.addEventListener('snapshot',event=>{
         if(!alive||stream!==source)return;
         try {const value=JSON.parse(event.data);setSnapshot(value);setConnection('connected');setError('');last=Date.now();
-          for(const alert of value.monitor?.alerts||[]){
-            if(seenAlerts.current.has(alert.id))continue;seenAlerts.current.add(alert.id);
-            if(alert.ts<openedAt.current||!['signal.detected','signal.withdrawn'].includes(alert.type))continue;
-            if('Notification' in window&&Notification.permission==='granted'&&localStorage.getItem('office-alerts')!=='off'){
-              try{new Notification(alert.type==='signal.detected'?'Novo sinal no escritório':'Sinal retirado — aguardar',{body:alert.message,tag:`office-${alert.symbol}-${alert.interval}`});}catch{/* In-app alerts remain available. */}
-            }
-          }
-          if(seenAlerts.current.size>500)seenAlerts.current=new Set((value.monitor?.alerts||[]).map(a=>a.id));
+          notify(value.monitor?.alerts);
         }
         catch {setConnection('reconnecting');}
       });
@@ -39,7 +56,7 @@ export default function useOffice() {
     // A proxy can leave an SSE socket open after the API restarts. Reopen stale streams.
     const check=setInterval(()=>{if(Date.now()-last>16000){setConnection('reconnecting');connect();}},5000);
     return ()=>{alive=false;stream.close();reconnect.current=null;clearInterval(check);};
-  },[]);
+  },[notify]);
   const run=useCallback(async(id,params)=>{
     const response=await API.post(`/api/office/agents/${id}/run`,params,{timeout:60000});
     await refresh();return response.data;

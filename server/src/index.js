@@ -5,6 +5,9 @@ import cors from "cors";
 import morgan from "morgan";
 import "dotenv/config";
 import nodemailer from "nodemailer";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { basicAuth, isLoopback } from "./auth.js";
 
 import {
   getGlobalMetrics,
@@ -24,6 +27,10 @@ import { getPositions as demoPositions, getEquity as demoEquity } from "./servic
 import { createOffice } from "./services/office.js";
 
 const app = express();
+// Senha de acesso (HTTP Basic) para tudo menos /api/health. Obrigatória fora do loopback.
+const APP_USER = process.env.APP_USER || "admin";
+const APP_PASSWORD = process.env.APP_PASSWORD || "";
+if (APP_PASSWORD) app.use(basicAuth({ user: APP_USER, password: APP_PASSWORD, open: ["/api/health"] }));
 app.use(cors());
 app.use(morgan("dev"));
 app.use(express.json());
@@ -488,6 +495,13 @@ const office = createOffice({
 });
 app.use('/api/office', office.router);
 
+// Front-end compilado (imagem Docker copia client/dist para server/client/dist).
+const CLIENT_DIST = process.env.CLIENT_DIST || fileURLToPath(new URL("../client/dist/", import.meta.url));
+if (existsSync(CLIENT_DIST)) {
+  app.use(express.static(CLIENT_DIST, { index: "index.html", maxAge: "1h" }));
+  app.get(/^(?!\/api\/).*/, (_req, res) => res.sendFile("index.html", { root: CLIENT_DIST }));
+}
+
 // 404 + handler de erro
 app.use((_req, res) => res.status(404).json({ error: "not found" }));
 // eslint-disable-next-line no-unused-vars
@@ -499,6 +513,11 @@ app.use((err, _req, res, _next) => {
 const port = process.env.PORT || 4000;
 // Local by default; set HOST=0.0.0.0 only behind auth (e.g. container/Fly).
 const host = process.env.HOST || "127.0.0.1";
+if (!isLoopback(host) && !APP_PASSWORD) {
+  // Fail closed: nunca expor escritório e rotas do bot sem senha.
+  console.error(`Recusando iniciar em ${host} sem APP_PASSWORD. Defina APP_PASSWORD (fly secrets set APP_PASSWORD=...).`);
+  process.exit(1);
+}
 const server = app.listen(port, host, () => {
   console.log(`Server on http://${host}:${port}`);
   office.start();

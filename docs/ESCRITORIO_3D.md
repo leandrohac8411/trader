@@ -103,7 +103,14 @@ As posições e o PnL apresentados pelos relatórios vêm dos arquivos locais, n
 
 O backtest curto não inclui funding nem reproduz decisões intravela, limites compartilhados ou latência. A auditoria de um ano continua em `server/backtests/reality/REPORT.md`. A aparência de jogo não constitui validação da estratégia.
 
-Não há autenticação nova; o ambiente é local. Não publicar este servidor como serviço multiusuário sem autenticação, limites por usuário e revisão das rotas existentes.
+Localmente o servidor escuta só em 127.0.0.1. Para publicar (Fly), o container usa `HOST=0.0.0.0` e **só inicia com `APP_PASSWORD`** definida: todas as rotas, inclusive a página, pedem usuário e senha (HTTP Basic, usuário `APP_USER`, padrão `admin`); só `/api/health` fica aberta. O mesmo servidor entrega o front compilado (`client/dist`), então página e API ficam na mesma origem.
+
+```powershell
+fly secrets set APP_PASSWORD="uma-senha-longa"
+fly deploy
+```
+
+É uma senha única, sem usuários separados nem limite por usuário. No Fly, `server/data/` fica no disco da máquina e se perde quando ela é recriada (estado do bot, histórico, escola); para guardar, monte um volume em `/app/server/data`.
 
 ## Validação
 

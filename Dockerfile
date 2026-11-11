@@ -30,8 +30,8 @@ ENV HOST=0.0.0.0
 COPY --from=server_deps /app/server/node_modules /app/server/node_modules
 COPY server /app/server
 
-# Copia o build do client para dentro do server
-# (ajuste este caminho se seu server servir estático de outra pasta)
+# Build do client: o server entrega server/client/dist (CLIENT_DIST) na mesma origem da API.
+# Exige APP_PASSWORD (fly secrets set APP_PASSWORD=...) porque HOST=0.0.0.0.
 COPY --from=client_build /app/client/dist /app/server/client/dist
 
 EXPOSE 4000

@@ -137,12 +137,19 @@ O backtest curto não inclui funding nem reproduz decisões intravela, limites c
 
 Localmente o servidor escuta só em 127.0.0.1. Para publicar (Fly), o container usa `HOST=0.0.0.0` e **só inicia com `APP_PASSWORD`** definida: todas as rotas, inclusive a página, pedem usuário e senha (HTTP Basic, usuário `APP_USER`, padrão `admin`); só `/api/health` fica aberta. O mesmo servidor entrega o front compilado (`client/dist`), então página e API ficam na mesma origem.
 
+Primeira vez (app em São Paulo — a Bybit bloqueia acessos dos EUA):
+
 ```powershell
-fly secrets set APP_PASSWORD="uma-senha-longa"
-fly deploy
+fly apps create crypto-leandro-prod --org personal
+fly volumes create bot_data --region gru --size 1 --app crypto-leandro-prod --yes
+node scripts/fly-secrets.mjs                 # envia só as variáveis necessárias (nunca as chaves da conta real)
+fly secrets set APP_PASSWORD="uma-senha-longa" --stage -a crypto-leandro-prod
+fly deploy --ha=false                        # UMA máquina: duas = ordens duplicadas
 ```
 
-É uma senha única, sem usuários separados nem limite por usuário. No Fly, `server/data/` fica no disco da máquina e se perde quando ela é recriada (estado do bot, histórico, escola); para guardar, monte um volume em `/app/server/data`.
+O `fly.toml` mantém a máquina sempre ligada (o bot roda dentro do servidor) e monta o volume `bot_data` em `server/data`. **Não deixe o bot local e o do Fly ligados ao mesmo tempo** na mesma conta demo.
+
+É uma senha única, sem usuários separados nem limite por usuário. No Fly, `server/data/` fica no volume `bot_data` e sobrevive a deploys e reinícios.
 
 ## Validação
 

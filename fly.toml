@@ -1,16 +1,38 @@
 app = "crypto-leandro-prod"
-primary_region = "gru"
+primary_region = "gru" # São Paulo (a Bybit bloqueia acessos dos EUA)
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
   PORT = "4000"
+  # Configuração do bot que não é segredo. Chaves e senha vão em `fly secrets`.
+  DEMO_BOT = "1"
+  BOT_DRY_RUN = "0"
 
+# O bot roda dentro do servidor: a máquina precisa ficar SEMPRE ligada,
+# e deve existir só UMA (duas máquinas = duas ordens para o mesmo sinal).
+# Deploy com: fly deploy --ha=false
 [http_service]
   internal_port = 4000
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = "off"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "30s"
+    method = "GET"
+    path = "/api/health"
+    timeout = "5s"
+
+# Estado do bot, trades, eventos e escola sobrevivem a deploys e reinícios.
+[[mounts]]
+  source = "bot_data"
+  destination = "/app/server/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

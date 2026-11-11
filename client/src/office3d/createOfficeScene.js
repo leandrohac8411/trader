@@ -107,15 +107,15 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
     character.root.rotation.y = seatYaw;
     character.root.userData.agentId = s.id;
     scene.add(character.root);
-    const bubble = createBubble();
-    bubble.sprite.position.set(0, 3.45, 0);
+    const bubble = createBubble(s.name, s.color);
+    bubble.sprite.position.set(0, 3.75, 0);
     character.root.add(bubble.sprite);
     // Invisible hit volume makes the whole seated figure easy to click.
     const hit = box(character.root, [1.3, 2.4, 1.6], [0, 1.2, 0.2], '#fff', { transparent: true, opacity: 0, depthWrite: false }, { shadow: false });
     hit.userData.agentId = s.id;
     const zzz = textSprite('Zzz…', { w: 260, h: 120, font: '800 60px sans-serif', color: '#3d4b8c', scale: 1.1 });
     zzz.visible = false;
-    zzz.position.set(-0.5, 2.9, 0);
+    zzz.position.set(-1.1, 2.3, 0); // beside the head, clear of the nameplate
     character.root.add(zzz);
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.85, 0.95, 40),
       new THREE.MeshBasicMaterial({ color: s.color, side: THREE.DoubleSide, transparent: true, opacity: 0.2, depthWrite: false }));
@@ -136,8 +136,8 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
     [-4, 0, 0.9], [-4.2, 0, -1.4], [-1.2, 0, -1.6], [6.2, 0, -1.5], [6.2, 0, 0.8],
   ], { guardApproach: [3.3, 0, -1.6] });
   const dogPos = new THREE.Vector3();
-  const dogBubble = createBubble();
-  dogBubble.sprite.position.set(0, 2.55, 0);
+  const dogBubble = createBubble('MAX', '#d9a066');
+  dogBubble.sprite.position.set(0, 2.85, 0);
   dog.root.add(dogBubble.sprite);
 
   // Blinking aviation light on the tallest tower; alarm light above the risk panel.
@@ -153,7 +153,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
   const seen = new Set();
   let primed = false, lastMood = null, lastCooldown = false, lastLevel = null, lastGoal = false;
   const byId = id => people.find(p => p.s.id === id);
-  const say = (id, text, ms = 6500) => (id === 'dog' ? dogBubble : byId(id)?.bubble)?.show(text, ms);
+  const say = (id, text, ms = 9000) => (id === 'dog' ? dogBubble : byId(id)?.bubble)?.show(text, ms);
   const trader = () => data?.crew?.trader;
   function agentState(id) {
     const agent = data?.agents?.find(a => a.id === id);
@@ -334,7 +334,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
       pose(p.character, state, t, motion);
       if (state === 'gaming') gaming = true;
       p.zzz.visible = state === 'sleeping';
-      if (p.zzz.visible) p.zzz.position.y = 2.9 + (motion ? Math.sin(t * 1.5) * 0.12 : 0);
+      if (p.zzz.visible) p.zzz.position.y = 2.3 + (motion ? Math.sin(t * 1.5) * 0.12 : 0);
       p.bubble.tick(now);
       const root = p.character.root.position;
       p.ring.position.set(root.x, 0.04, root.z);
@@ -377,7 +377,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
       headPos.y += 1.25;
       const v = headPos.project(camera);
       const offscreen = Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05;
-      return { id: p.s.id, x: (v.x * 0.5 + 0.5) * 100, y: (-0.5 * v.y + 0.5) * 100, hidden: hideLabels || offscreen };
+      return { id: p.s.id, x: (v.x * 0.5 + 0.5) * 100, y: (-0.5 * v.y + 0.5) * 100, hidden: hideLabels || offscreen, talking: p.bubble.sprite.visible };
     }));
   }
   frame = requestAnimationFrame(render);
@@ -672,38 +672,46 @@ function floorSign(scene, text, x, z, width, color) {
 
 // ── Speech bubbles ────────────────────────────────────────────────────────
 
-function createBubble() {
-  const canvas = makeCanvas(640, 150);
+// Speech bubble with the speaker's name on top (the HTML nameplate hides while someone talks).
+function createBubble(name = '', color = '#1b2430') {
+  const W = 720, H = 230;
+  const canvas = makeCanvas(W, H);
   const ctx = canvas.getContext('2d');
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, toneMapped: false }));
   sprite.renderOrder = 10;
-  sprite.scale.set(3.6, 0.84, 1);
+  sprite.scale.set(5, 5 * H / W, 1);
   sprite.visible = false;
   let until = 0;
   return {
     sprite,
     show(text, ms) {
-      ctx.clearRect(0, 0, 640, 150);
-      ctx.font = '700 46px sans-serif';
-      const w = Math.min(600, ctx.measureText(text).width + 70);
-      const x = (640 - w) / 2;
+      ctx.clearRect(0, 0, W, H);
+      ctx.font = '700 50px sans-serif';
+      const w = Math.min(W - 20, Math.max(ctx.measureText(text).width, 200) + 80);
+      const x = (W - w) / 2;
       ctx.fillStyle = '#fffaf0';
       ctx.strokeStyle = '#1b2430';
-      ctx.lineWidth = 5;
-      roundRect(ctx, x, 12, w, 96, 30);
+      ctx.lineWidth = 6;
+      roundRect(ctx, x, 10, w, 170, 34);
       ctx.fill();
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(300, 106);
-      ctx.lineTo(320, 140);
-      ctx.lineTo(342, 106);
+      ctx.moveTo(W / 2 - 22, 178);
+      ctx.lineTo(W / 2, 222);
+      ctx.lineTo(W / 2 + 24, 178);
       ctx.fill();
-      ctx.fillStyle = '#1b2430';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(text, 320, 62, 560);
+      if (name) {
+        ctx.fillStyle = color;
+        ctx.font = '800 34px sans-serif';
+        ctx.fillText(name.toUpperCase(), W / 2, 50, w - 60);
+      }
+      ctx.fillStyle = '#1b2430';
+      ctx.font = '700 50px sans-serif';
+      ctx.fillText(text, W / 2, name ? 118 : 95, w - 50);
       texture.needsUpdate = true;
       sprite.visible = true;
       until = performance.now() + ms;

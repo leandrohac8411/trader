@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import OfficeScene from './OfficeScene.jsx';
 import useOffice from './useOffice.js';
-import MarketRadar from './MarketRadar.jsx';
+import MarketView from './MarketView.jsx';
 import AgentWorkspace from './AgentWorkspace.jsx';
 import './office.css';
 import { CHARACTER_ATLAS, CHARACTER_CELLS } from './characters.js';
@@ -148,8 +148,7 @@ export default function Office({onDashboard}) {
         {(error||!connected&&snapshot)&&<div className="office-warning" role="alert">{error||'Conexão interrompida. Os dados abaixo são da última atualização; novas consultas estão indisponíveis.'}<button onClick={refresh}>Tentar novamente</button></div>}
         {focused&&<div className="agent-focus-nav"><button onClick={showOffice}>← Voltar ao escritório</button><span>O monitor de sinais continua funcionando</span><label>Funcionário<select aria-label="Trocar agente em foco" value={selected} onChange={e=>select(e.target.value)}>{agents.map(a=><option key={a.id} value={a.id}>{a.name} · {a.role}</option>)}</select></label></div>}
         {!focused&&view==='desk'&&<><DemoDesk snapshot={snapshot} connected={connected}/><ProposalsCard proposals={snapshot?.proposals} bot={snapshot?.bot}/><GoalsStrip game={snapshot?.game} mood={snapshot?.crew?.trader}/></>}
-        {!focused&&view==='market'&&<MarketRadar monitor={snapshot?.monitor} connected={connected} onInterval={setMonitorInterval} notifications={notifications} onNotifications={enableNotifications}
-          onSelect={market=>{setSymbol(market);select('analyst');setTab('activity');setAnalysisView('live');}}/>}
+        {!focused&&view==='market'&&<MarketView snapshot={snapshot} connected={connected} onInterval={setMonitorInterval} notifications={notifications} onNotifications={enableNotifications}/>}
         {!focused&&view==='school'&&<><SchoolBoard school={snapshot?.school} onRun={runSchool} disabled={!connected}/><ManagerCard manager={snapshot?.manager} onReview={reviewManager} disabled={!connected}/></>}
         {(focused||view==='office')&&<div className={`office-floor-layout ${focused?'office-focused-layout':''} ${focused&&selected==='trader'?'agent-focus-trader':''}`}>
           {focused?<AgentWorkspace key={focused} agent={agent} snapshot={snapshot} connected={connected}/>:<section className="floor-column" aria-label="Escritório interativo">

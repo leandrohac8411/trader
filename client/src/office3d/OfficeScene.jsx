@@ -22,7 +22,8 @@ export default function OfficeScene({ agents, snapshot, selected, onSelect, redu
           if (!el) return;
           el.style.left = `${p.x}%`;
           el.style.top = `${p.y}%`;
-          el.style.visibility = p.hidden ? 'hidden' : 'visible';
+          // While a character talks, its nameplate hides so the speech bubble stays readable.
+          el.style.visibility = p.hidden || p.talking ? 'hidden' : 'visible';
         }),
       });
       sceneRef.current = scene;

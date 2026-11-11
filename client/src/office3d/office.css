@@ -209,3 +209,14 @@
 .office-floor-layout:not(.office-focused-layout) .floor-column .office-scene-wrap{flex:1 1 auto;height:auto;min-height:clamp(460px,52vw,720px)}
 .proposal-head .outcome{font-style:normal;font-size:9px;padding:1px 6px;border-radius:4px;background:#1b2a33;color:#9fb2bb}
 .proposal-head .o-opened{color:#86efac;background:#173126}.proposal-head .o-failed{color:#fca5a5;background:#3c2b29}
+/* Aba Mercado: gráfico de velas */
+.market-chart-panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 18px;scroll-margin-top:16px}
+.market-chart-controls{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.market-symbols{display:flex;gap:4px;background:#111e28;border:1px solid var(--line);border-radius:7px;padding:3px}
+.market-symbols button{border:0;background:none;color:#8da2ad;padding:6px 11px;border-radius:5px;font:600 11px 'IBM Plex Mono',monospace!important}
+.market-symbols button:hover{color:#e6eef0}
+.market-symbols button.is-active{background:#2b3a43;color:#f2ead9}
+.market-reading{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-top:12px;padding:10px 12px;background:#111e28;border-radius:7px}
+.market-reading small{font:600 8px 'IBM Plex Mono',monospace;letter-spacing:1.2px;color:#6f8996}
+.market-reading strong{font:650 15px 'Manrope',sans-serif;color:#e6eef0}
+.market-reading span{font-size:11px;color:#8fa3ad}

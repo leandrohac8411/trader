@@ -15,3 +15,4 @@ server/data/
 .tools/
 vercel.env
 .vercel
+cron-job.txt

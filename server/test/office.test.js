@@ -140,3 +140,25 @@ test('proposal outcome tells opened, dry-run and failed orders apart',async()=>{
   const out=proposalsWithOutcome(ev);
   assert.deepEqual(out.map(p=>[p.symbol,p.outcome]),[['XRPUSDT',null],['SOLUSDT','dry-run'],['ETHUSDT','opened'],['BTCUSDT','failed']]);
 });
+test('serverless: scheduler flag goes stale without ticks, cycle marks it fresh, radar refresh only when old',async t=>{
+  let scans=0;
+  const office=setup(t,{serverless:true,analyze:async({symbol})=>{scans++;return {signal:'NEUTRAL',stage:'watch',probability:60,price:1,symbol};}});
+  let s=office.snapshot();
+  assert.equal(s.scheduler.lastTickAt,null);
+  assert.equal(s.scheduler.stale,true);
+  await office.cycle();
+  s=office.snapshot();
+  assert.equal(s.scheduler.stale,false);
+  assert.ok(s.scheduler.lastTickAt);
+  assert.equal(s.monitor.items.length,5);
+  const before=scans;
+  assert.deepEqual(await office.refreshRadar(),{fresh:true}); // acabou de ler: não lê de novo
+  assert.equal(scans,before);
+  const later=await office.refreshRadar(Date.now()+10*60_000);
+  assert.equal(later.scanned,5);
+  assert.equal(scans,before+5);
+  assert.equal(office.snapshot().scheduler.lastTickAt,s.scheduler.lastTickAt); // refresh não conta como tick
+});
+test('non-serverless snapshot has no scheduler block',t=>{
+  assert.equal(setup(t).snapshot().scheduler,null);
+});

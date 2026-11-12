@@ -28,9 +28,20 @@ export default function useOffice() {
   // Vercel (serverless) não mantém conexão aberta: consulta o snapshot a cada 10 s.
   useEffect(()=>{
     if(!POLL)return undefined;
-    let alive=true;
+    let alive=true,lastRefresh=0;
+    // Com o site aberto, pede uma leitura do radar quando os dados passam do intervalo
+    // (o servidor ignora se outra leitura acabou de acontecer). Ordens continuam só pelo agendador.
+    const radarStale=s=>{const m=s?.monitor;if(!s?.scheduler||!m)return false;const last=Date.parse(m.lastScan||0);return !last||Date.now()-last>(m.scanMs||300000);};
     const load=async()=>{
-      try{const json=await API.get('/api/office/snapshot');if(!alive)return;setSnapshot(json.data);setConnection('connected');setError('');notify(json.data?.monitor?.alerts);}
+      try{
+        let json=await API.get('/api/office/snapshot');if(!alive)return;
+        setSnapshot(json.data);setConnection('connected');setError('');notify(json.data?.monitor?.alerts);
+        if(radarStale(json.data)&&Date.now()-lastRefresh>60_000){
+          lastRefresh=Date.now();
+          await API.post('/api/office/refresh',{},{timeout:60000});
+          json=await API.get('/api/office/snapshot');if(!alive)return;setSnapshot(json.data);notify(json.data?.monitor?.alerts);
+        }
+      }
       catch{if(alive)setConnection('reconnecting');}
     };
     load();const timer=setInterval(load,10_000);

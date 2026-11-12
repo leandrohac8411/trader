@@ -309,3 +309,5 @@
   .proposal-head b{white-space:nowrap}
   .proposal-head .outcome{order:5;flex-basis:100%;width:max-content;max-width:100%}
 }
+.office-warning-bot{background:#3a2626;border-color:#7a3b3b;color:#f3c1b5}
+.office-warning-bot b{color:#fca5a5}

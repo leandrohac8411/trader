@@ -8,7 +8,7 @@ export default function MarketRadar({monitor,connected,onInterval,onSelect,notif
   const activeAlert=connected?monitor?.alerts?.find(alert=>alert.type==='signal.detected'&&monitor.items.some(item=>
     !item.stale&&!item.error&&item.symbol===alert.symbol&&item.interval===alert.interval&&item.signal===alert.signal&&now-Date.parse(item.updatedAt)<monitor.scanMs*2)):null;
   const latest=activeAlert||monitor?.alerts?.[0];
-  const status=!connected?'Sem conexão':!monitor?.enabled?'Iniciando monitoramento':monitor.running?'Analisando o mercado':`Próxima leitura em ${seconds??'—'}s`;
+  const status=!connected?'Sem conexão':!monitor?.enabled?'Iniciando monitoramento':monitor.running?'Analisando o mercado':seconds==null?'Aguardando a próxima leitura':seconds>90?`Próxima leitura em ~${Math.ceil(seconds/60)} min`:seconds>0?`Próxima leitura em ${seconds}s`:'Lendo o mercado…';
   const symbols=monitor?.symbols||['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
   async function change(e){setError('');try{await onInterval(e.target.value);}catch(err){setError(err.message);}}
   return <section className="market-radar" aria-label="Monitoramento automático de sinais">
@@ -27,7 +27,7 @@ export default function MarketRadar({monitor,connected,onInterval,onSelect,notif
         <p>{stale?'Sem sinal válido':`US$ ${item.price.toLocaleString('pt-BR',{maximumFractionDigits:4})}`}<span>{item&&!stale?new Date(item.updatedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):''}</span></p>
       </button>;
     })}</div>
-    <div className="radar-bottom" role="status"><span><i/>{status}{monitor?.scanCount?` · ${monitor.scanCount} leituras concluídas`:''}</span><span>Atualiza sozinho a cada 45s · Score ≠ chance de lucro</span></div>
+    <div className="radar-bottom" role="status"><span><i/>{status}{monitor?.scanCount?` · ${monitor.scanCount} leituras concluídas`:''}</span><span>{(monitor?.scanMs||45000)>=60000?`Atualiza a cada ${Math.round((monitor?.scanMs||0)/60000)} min`:`Atualiza sozinho a cada ${Math.round((monitor?.scanMs||45000)/1000)}s`} · Score ≠ chance de lucro</span></div>
     {latest&&<div className={`radar-alert ${activeAlert?'radar-alert-entry':''}`} aria-live="polite"><strong>{activeAlert?'Sinal ativo':'Último aviso'}</strong><span>{latest.message}</span><time>{new Date(latest.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</time></div>}
     {error&&<p className="action-error" role="alert">{error}</p>}
   </section>;

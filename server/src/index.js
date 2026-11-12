@@ -522,6 +522,14 @@ app.all("/api/bot/tick", async (req, res) => {
   res.json(out.ran ? { ok: true, ...out.value } : { ok: false, busy: "outro tick em andamento" });
 });
 
+// Serverless: o site aberto pede uma leitura do radar quando os dados estão velhos.
+// Só o radar (sem bot, sem escola); a trava evita leituras repetidas em paralelo.
+app.post("/api/office/refresh", async (_req, res) => {
+  if (!SERVERLESS) return res.json({ data: { skipped: "servidor com loop próprio" } });
+  const out = await withLock("radar", 60, () => office.refreshRadar());
+  res.json({ data: out.ran ? out.value : { busy: true } });
+});
+
 // Escritório: observação e pesquisa; nenhum comando de execução é exposto aqui.
 const office = createOffice({
   bot, analyze: runStrategy, chat: chatLLM, aiEnabled: AI_ENABLED, serverless: SERVERLESS,

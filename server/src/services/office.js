@@ -58,6 +58,15 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
     monitor.importState(st);
     school?.reload(); manager?.reload?.();
   }
+  // Última chamada do agendador (cron-job.org → /api/bot/tick). Só no modo serverless.
+  const tickFile = new URL('tick-state.json', dataDir);
+  const STALE_TICK_MS = Number(process.env.TICK_STALE_MS || 6 * 60_000);
+  function schedulerState(now = Date.now()) {
+    if (!serverless) return null;
+    let at = null;
+    try { at = existsSync(tickFile) ? JSON.parse(readFileSync(tickFile, 'utf8')).at || null : null; } catch { at = null; }
+    return { lastTickAt: at ? new Date(at).toISOString() : null, stale: !at || now - at > STALE_TICK_MS, staleAfterMs: STALE_TICK_MS };
+  }
   const saveMonitor = () => { mkdirSync(dataDir, { recursive: true }); writeFileSync(monitorFile, JSON.stringify(monitor.exportState())); };
   /** Uma rodada do escritório (chamada pelo tick): radar da Alice e, se for hora, a escola. */
   async function cycle() {
@@ -66,7 +75,21 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
     saveMonitor();
     let schoolRan = false;
     if (school && (!serverless || school.due())) { await school.run(); schoolRan = true; }
+    if (serverless) writeFileSync(tickFile, JSON.stringify({ at: Date.now() }));
     return { markets: monitor.snapshot().items.length, schoolRan };
+  }
+  /**
+   * Serverless: leitura do radar pedida pelo site aberto quando os dados estão velhos
+   * (não roda o bot nem a escola — ordens só pelo agendador).
+   */
+  async function refreshRadar(now = Date.now()) {
+    syncFromStore();
+    const last = Date.parse(monitor.snapshot().lastScan || 0);
+    const scanMs = monitor.snapshot().scanMs;
+    if (last && now - last < scanMs) return { fresh: true };
+    await monitor.scan();
+    saveMonitor();
+    return { scanned: monitor.snapshot().items.length };
   }
   function snapshot() {
     syncFromStore();
@@ -89,6 +112,7 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
       // Resultado da conta demo: todos os trades encerrados registrados pelo bot.
       results: computeResults(bot.readTrades(0)),
       school: school ? school.snapshot() : null,
+      scheduler: schedulerState(),
       // Propostas do bot e a decisão do Ricardo (registro local do bot).
       proposals: proposalsWithOutcome(bot.readEvents(300)),
       manager: manager ? manager.snapshot() : null,
@@ -240,7 +264,7 @@ data: ${JSON.stringify(snapshot())}
     } catch { res.status(502).json({ error:'Não foi possível conversar com a IA. Tente novamente.' }); }
     finally { activeChats--; }
   });
-  return { router, snapshot, run, school, cycle, start:()=>{ if (serverless) return; monitor.start(); school?.start(); }, stop:()=>{
+  return { router, snapshot, run, school, cycle, refreshRadar, start:()=>{ if (serverless) return; monitor.start(); school?.start(); }, stop:()=>{
     monitor.stop();school?.stop();clearInterval(timer);timer=null;subscribers.forEach(res=>res.end());subscribers.clear();
   } };
 }

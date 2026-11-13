@@ -9,6 +9,35 @@
 const round = (v, p = 2) => (Number.isFinite(+v) ? Number(Number(v).toFixed(p)) : 0);
 
 export const MIN_SAMPLE = 30;
+export const DAY_TZ = "America/Sao_Paulo";
+
+/** Data (AAAA-MM-DD) no fuso de Brasília. */
+export function dayKey(ts, timeZone = DAY_TZ) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts));
+}
+
+/**
+ * Resultado de cada dia (horário de Brasília), do mais recente para o mais antigo:
+ * quanto ganhou (soma dos trades no lucro), quanto perdeu (soma dos trades no prejuízo) e o líquido.
+ * Conta só trades ENCERRADOS (posição aberta não entra até fechar).
+ */
+export function dailyResults(trades = [], { days = 30, timeZone = DAY_TZ } = {}) {
+  const map = new Map();
+  for (const t of trades) {
+    if (!t.closedAt || !Number.isFinite(Number(t.pnlUsd))) continue;
+    const k = dayKey(t.closedAt, timeZone);
+    const d = map.get(k) || { day: k, trades: 0, wins: 0, losses: 0, gainUsd: 0, lossUsd: 0, netUsd: 0 };
+    const v = Number(t.pnlUsd);
+    d.trades++;
+    if (v > 0) { d.wins++; d.gainUsd += v; } else { d.losses++; d.lossUsd += v; }
+    d.netUsd += v;
+    map.set(k, d);
+  }
+  return [...map.values()]
+    .sort((a, b) => (a.day < b.day ? 1 : -1))
+    .slice(0, days)
+    .map((d) => ({ ...d, gainUsd: round(d.gainUsd), lossUsd: round(d.lossUsd), netUsd: round(d.netUsd) }));
+}
 
 export function computeResults(trades = [], { minSample = MIN_SAMPLE } = {}) {
   const list = trades
@@ -56,6 +85,8 @@ export function computeResults(trades = [], { minSample = MIN_SAMPLE } = {}) {
     minSample,
     verdict,
     curve,
+    today: dayKey(Date.now()),
+    byDay: dailyResults(list),
     trades: list.slice(-50).reverse().map((t) => ({
       symbol: t.symbol, tf: t.tf, dir: t.dir, entry: t.entry, exit: t.exit, reason: t.reason,
       netR: round(t.netR, 3), pnlUsd: round(t.pnlUsd), openedAt: t.openedAt || null, closedAt: t.closedAt || null,

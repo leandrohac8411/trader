@@ -312,3 +312,34 @@
 }
 .office-warning-bot{background:#3a2626;border-color:#7a3b3b;color:#f3c1b5}
 .office-warning-bot b{color:#fca5a5}
+
+/* Ganhos e perdas por dia (Mesa demo) */
+.daily-board h3 em{font-style:normal;font-weight:400;font-size:10px;color:#6f8996;margin-left:8px}
+.daily-today{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 14px}
+.daily-today>div{background:#15222a;border:1px solid #22313a;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.daily-today span{font:600 9px 'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:#7f97a3}
+.daily-today b{font-size:20px;color:#e6eef0}
+.daily-today small{font-size:10px;color:#7f97a3}
+.daily-today .g b{color:#4ade80}.daily-today .l b{color:#f87171}
+.daily-today .n.pos{border-color:#1f5137}.daily-today .n.pos b{color:#4ade80}
+.daily-today .n.neg{border-color:#5a2a2a}.daily-today .n.neg b{color:#f87171}
+.daily-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.daily-list li{display:grid;grid-template-columns:86px 1fr 190px 110px;gap:12px;align-items:center;padding:8px 0;border-top:1px solid #1e2c34;font-size:12px}
+.daily-list li.is-today{background:#162630;margin:0 -8px;padding:8px;border-radius:8px}
+.daily-date{display:flex;flex-direction:column;color:#d6e2e6;text-transform:capitalize}
+.daily-date small{font-size:9px;color:#7f97a3;text-transform:none}
+.daily-bars{display:flex;flex-direction:column;gap:3px}
+.daily-bars i{display:block;height:6px;border-radius:3px;min-width:0}
+.daily-bars .g{background:#4ade80}.daily-bars .l{background:#f87171}
+.daily-nums{display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}
+.daily-nums b{font-weight:500;font-size:12px}
+.daily-net{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.daily-board .pos{color:#4ade80}.daily-board .neg{color:#f87171}
+@media(max-width:760px){
+  .daily-board h3 em{display:block;margin:4px 0 0}
+  .daily-today{grid-template-columns:1fr 1fr}
+  .daily-today .n{grid-column:1/-1}
+  .daily-today b{font-size:17px}
+  .daily-list li{grid-template-columns:62px 1fr auto;grid-template-areas:"date bars net" "date nums nums";gap:4px 10px}
+  .daily-date{grid-area:date}.daily-bars{grid-area:bars}.daily-nums{grid-area:nums;justify-content:flex-start;gap:14px}.daily-net{grid-area:net}
+}

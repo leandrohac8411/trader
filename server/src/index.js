@@ -93,6 +93,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     runtime: SERVERLESS ? "vercel" : "server",
+    version: (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || null,
     storage: isRedis() ? "redis" : "files",
     ready: !SERVERLESS || (!!APP_PASSWORD && storage.redis && !!TICK_SECRET),
     time: new Date().toISOString(),

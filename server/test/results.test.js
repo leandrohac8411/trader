@@ -31,3 +31,20 @@ test("curva, drawdown e lista recente ordenada", () => {
   assert.equal(r.wins, 2);
   assert.equal(r.avgLossUsd, -150);
 });
+
+test("dailyResults: ganho, perda e líquido por dia no horário de Brasília", async () => {
+  const { dailyResults, dayKey } = await import("../src/services/results.js");
+  const at = (iso) => Date.parse(iso);
+  const trades = [
+    { closedAt: at("2026-11-12T05:12:00Z"), pnlUsd: 988 },  // 02:12 de 12/11 em Brasília
+    { closedAt: at("2026-11-12T02:30:00Z"), pnlUsd: -400 }, // 23:30 de 11/11 em Brasília
+    { closedAt: at("2026-11-11T22:48:00Z"), pnlUsd: 726 },
+    { closedAt: at("2026-11-12T15:00:00Z"), pnlUsd: -1200 },
+    { closedAt: null, pnlUsd: 50 },                          // sem fechamento: ignora
+  ];
+  const d = dailyResults(trades);
+  assert.deepEqual(d.map((x) => x.day), ["2026-11-12", "2026-11-11"]);
+  assert.deepEqual(d[0], { day: "2026-11-12", trades: 2, wins: 1, losses: 1, gainUsd: 988, lossUsd: -1200, netUsd: -212 });
+  assert.deepEqual(d[1], { day: "2026-11-11", trades: 2, wins: 1, losses: 1, gainUsd: 726, lossUsd: -400, netUsd: 326 });
+  assert.equal(dayKey(at("2026-11-13T02:59:00Z")), "2026-11-12");
+});

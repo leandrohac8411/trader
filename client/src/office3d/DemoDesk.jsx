@@ -40,6 +40,33 @@ function Curve({ points }) {
   </svg>;
 }
 
+const dayLabel = d => {
+  const [y, m, dd] = d.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, dd, 12));
+  return `${dt.toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'UTC' }).replace('.', '')} ${String(dd).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
+};
+
+// Quanto ganhou e quanto perdeu em cada dia (trades encerrados, horário de Brasília).
+function DailyBoard({ byDay = [], today }) {
+  const t = byDay.find(d => d.day === today) || { trades: 0, wins: 0, losses: 0, gainUsd: 0, lossUsd: 0, netUsd: 0 };
+  const max = Math.max(1, ...byDay.map(d => Math.max(d.gainUsd, -d.lossUsd)));
+  return <div className="desk-box daily-board">
+    <h3>Ganhos e perdas por dia <em>horário de Brasília · só trades encerrados</em></h3>
+    <div className="daily-today">
+      <div className={t.gainUsd > 0 ? 'g' : ''}><span>Ganhou hoje</span><b>{usd(t.gainUsd, true)}</b><small>{t.wins} trade{t.wins === 1 ? '' : 's'} no lucro</small></div>
+      <div className={t.lossUsd < 0 ? 'l' : ''}><span>Perdeu hoje</span><b>{t.lossUsd ? usd(t.lossUsd, true) : usd(0)}</b><small>{t.losses} trade{t.losses === 1 ? '' : 's'} no prejuízo</small></div>
+      <div className={t.netUsd > 0 ? 'n pos' : t.netUsd < 0 ? 'n neg' : 'n'}><span>Resultado do dia</span><b>{usd(t.netUsd, true)}</b><small>{t.trades ? `${t.trades} encerrado${t.trades === 1 ? '' : 's'} hoje` : 'nenhum trade fechou hoje'}</small></div>
+    </div>
+    {!byDay.length ? <p className="quiet-copy">Nenhum dia com trade encerrado ainda.</p>
+      : <ul className="daily-list">{byDay.map(d => <li key={d.day} className={d.day === today ? 'is-today' : ''}>
+        <span className="daily-date">{d.day === today ? 'Hoje' : dayLabel(d.day)}<small>{d.wins}V · {d.losses}D</small></span>
+        <span className="daily-bars" aria-hidden="true"><i className="g" style={{ width: `${(d.gainUsd / max) * 100}%` }} /><i className="l" style={{ width: `${(-d.lossUsd / max) * 100}%` }} /></span>
+        <span className="daily-nums"><b className="pos">{d.gainUsd ? usd(d.gainUsd, true) : '—'}</b><b className="neg">{d.lossUsd ? usd(d.lossUsd, true) : '—'}</b></span>
+        <span className={`daily-net ${d.netUsd > 0 ? 'pos' : d.netUsd < 0 ? 'neg' : ''}`}>{usd(d.netUsd, true)}</span>
+      </li>)}</ul>}
+  </div>;
+}
+
 export default function DemoDesk({ snapshot, connected }) {
   const bot = snapshot?.bot, res = snapshot?.results;
   const { desk, error } = useDesk(!!bot?.enabled && connected);
@@ -56,7 +83,7 @@ export default function DemoDesk({ snapshot, connected }) {
 
     <div className="desk-kpis">
       <div><span>Saldo da conta demo</span><b>{desk?.equity != null ? usd(desk.equity) : bot?.enabled ? (error ? '—' : '…') : '—'}</b><small>{desk?.at ? `ao vivo · ${when(desk.at)}` : bot?.enabled ? 'consultando a Bybit Demo' : 'bot desligado'}</small></div>
-      <div><span>Hoje (UTC)</span><b className={today > 0 ? 'pos' : today < 0 ? 'neg' : ''}>{today != null ? usd(today, true) : '—'}</b><small>saldo contra o início do dia</small></div>
+      <div><span>Saldo hoje</span><b className={today > 0 ? 'pos' : today < 0 ? 'neg' : ''}>{today != null ? usd(today, true) : '—'}</b><small>desde 21h (00h UTC), com posições abertas</small></div>
       <div><span>Lucro realizado</span><b className={res.totalPnlUsd > 0 ? 'pos' : res.totalPnlUsd < 0 ? 'neg' : ''}>{usd(res.totalPnlUsd, true)}</b><small>{res.n} trades encerrados</small></div>
       <div><span>Acerto</span><b>{res.n ? `${Math.round(res.winRate * 100)}%` : '—'}</b><small>{res.wins}V · {res.losses}D</small></div>
       <div><span>Expectativa</span><b className={res.expectancyR > 0 ? 'pos' : res.expectancyR < 0 ? 'neg' : ''}>{res.n ? r3(res.expectancyR) : '—'}</b><small>{res.ciR ? `95%: ${r3(res.ciR[0])} a ${r3(res.ciR[1])}` : 'por trade, em risco'}</small></div>
@@ -65,6 +92,8 @@ export default function DemoDesk({ snapshot, connected }) {
     <div className="desk-progress" aria-label={`${res.n} de ${res.minSample} trades para começar a concluir`}>
       <i style={{ width: `${Math.min(100, (res.n / res.minSample) * 100)}%` }} /><span>{Math.min(res.n, res.minSample)}/{res.minSample} trades para a primeira conclusão</span>
     </div>
+
+    <DailyBoard byDay={res.byDay} today={res.today} />
 
     <div className="desk-grid">
       <div className="desk-box"><h3>Lucro acumulado (realizado)</h3><Curve points={res.curve} /></div>

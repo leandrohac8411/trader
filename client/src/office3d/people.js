@@ -42,6 +42,14 @@ export function buildCharacter(kit, look) {
     return shoulder;
   });
 
+  // Coffee cup and energy-drink can in the right hand (shown only while drinking).
+  const cup = box(arms[1], [0.2, 0.24, 0.2], [0, -0.92, 0.12], '#f4f1ea', {}, { shadow: false });
+  box(cup, [0.21, 0.06, 0.21], [0, 0.04, 0], '#8b5a2b', {}, { shadow: false });
+  cup.visible = false;
+  const can = box(arms[1], [0.17, 0.32, 0.17], [0, -0.92, 0.12], '#1c2026', {}, { shadow: false });
+  box(can, [0.18, 0.1, 0.18], [0, 0.02, 0], '#38e8ff', { emissive: '#38e8ff', emissiveIntensity: 0.6 }, { shadow: false });
+  can.visible = false;
+
   // Game controller, only visible while playing in the lounge.
   const controller = box(torso, [0.46, 0.1, 0.22], [0, 0.36, 0.64], '#22252c');
   box(controller, [0.08, 0.04, 0.06], [-0.12, 0.06, 0.04], '#d4453b', {}, { shadow: false });
@@ -66,7 +74,7 @@ export function buildCharacter(kit, look) {
   }
   addHair(kit, head, look);
 
-  return { root, hips, torso, arms, legs, neck, head, controller, look, phase: Math.random() * 10 };
+  return { root, hips, torso, arms, legs, neck, head, controller, cup, can, look, phase: Math.random() * 10 };
 }
 
 function addHair(kit, head, { hair, hairStyle }) {
@@ -102,11 +110,14 @@ function addHair(kit, head, { hair, hairStyle }) {
 }
 
 // state: 'working' | 'monitoring' | 'idle' | 'sleeping' | 'error' | 'walking' | 'gaming' | 'chatting' | 'reporting'
+//        | 'coffee' | 'energy' (standing, drinking)
 export function pose(c, state, t, motion) {
   const m = motion ? 1 : 0;
   const ph = c.phase;
-  const seated = state !== 'walking' && state !== 'chatting';
+  const seated = !['walking', 'chatting', 'coffee', 'energy'].includes(state);
   c.controller.visible = state === 'gaming';
+  c.cup.visible = state === 'coffee';
+  c.can.visible = state === 'energy';
   c.hips.position.y = seated ? HIP_SIT : HIP_STAND + Math.abs(Math.sin(t * 8)) * 0.04 * m;
   c.torso.rotation.set(0, 0, 0);
   c.head.rotation.set(0, 0, 0);
@@ -134,6 +145,16 @@ export function pose(c, state, t, motion) {
     c.torso.rotation.x = 0.08;
     c.head.rotation.y = state === 'monitoring' ? Math.sin(t * 0.7 + ph) * 0.35 * m : 0;
     c.head.rotation.x = 0.05;
+    return;
+  }
+  if (state === 'coffee' || state === 'energy') {
+    // Standing, sipping now and then.
+    c.hips.position.y = HIP_STAND;
+    const sip = Math.max(0, Math.sin(t * 1.3 + ph)) * m;
+    right.rotation.x = -1.1 - sip * 1.15;
+    right.rotation.z = 0.25 * sip;
+    left.rotation.x = -0.1;
+    c.head.rotation.x = -0.25 * sip;
     return;
   }
   if (state === 'chatting' || state === 'reporting') {

@@ -20,8 +20,14 @@ const EXITS = {
 export const BOSS = { entry: [[-6.55, -1.6], [-6.55, -3.0]], spot: { x: -7.6, z: -3.4, yaw: Math.PI, pose: 'reporting' } };
 
 // Water cooler beside the lounge; up to three people stand around it facing the middle.
-export const COOLER = { at: [11.2, 2.5], centre: [10.0, 2.7], entry: [[8.4, 0.9]],
-  spots: [[9.1, 2.4], [10.6, 1.9], [10.1, 3.5]] };
+export const COOLER = { at: [11.4, 2.9], centre: [9.9, 3.2], entry: [[8.4, 0.9]],
+  spots: [[9.2, 2.7], [10.5, 3.0], [9.8, 3.9]] };
+
+// Coffee machine and energy-drink vending machine, next to the cooler (fronts face +Z, towards the cameras).
+export const MACHINES = {
+  coffee: { at: [11.5, 0.6], spot: [10.75, 1.4], pose: 'coffee' },
+  energy: { at: [9.9, 0.6], spot: [9.05, 1.35], pose: 'energy' },
+};
 
 export function canWalk(id) { return !!EXITS[id]; }
 
@@ -35,6 +41,10 @@ export function routeTo(id, dest, spotIndex = 0) {
   const out = [...exit.map(([x, z]) => node(x, z)), node(lx, AISLE_Z)];
   if (dest === 'boss') {
     return [...out, ...BOSS.entry.map(([x, z]) => node(x, z)), node(BOSS.spot.x, BOSS.spot.z, { yaw: BOSS.spot.yaw, pose: BOSS.spot.pose })];
+  }
+  if (MACHINES[dest]) {
+    const m = MACHINES[dest];
+    return [...out, ...COOLER.entry.map(([x, z]) => node(x, z)), node(m.spot[0], m.spot[1], { yaw: Math.atan2(m.at[0] - m.spot[0], m.at[1] - m.spot[1]), pose: m.pose })];
   }
   if (dest === 'cooler') {
     const [sx, sz] = COOLER.spots[spotIndex % COOLER.spots.length];
@@ -74,6 +84,19 @@ export function reportLines(id, f) {
       : null,
   }[id];
   return lines || null;
+}
+
+/** What someone says at the coffee machine or the energy-drink machine. */
+export function drinkLine(id, kind, f) {
+  if (kind === 'energy') {
+    if (id === 'trader' && f.deskFull) return 'Energético e volto pro cochilo ⚡😴';
+    if (id === 'trader') return 'Energético pra aguentar o mercado ⚡';
+    return f.signals ? `${f.signals} sinal(is) no radar… preciso de um energético ⚡` : 'Um energético pra acordar ⚡';
+  }
+  if (id === 'auditor') return 'Café e de volta às planilhas ☕';
+  if (id === 'scientist') return 'Café: o combustível do backtest ☕';
+  if (id === 'risk') return 'Café sem açúcar. Risco controlado ☕';
+  return 'Mais um café ☕';
 }
 
 /** A quick chat by the cooler between two people, built from the same facts. */

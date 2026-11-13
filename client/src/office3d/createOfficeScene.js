@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createKit, makeCanvas, canvasPanel, textSprite, roundRect, rng } from './voxel.js';
 import { LOOKS, buildCharacter, pose, buildDog, createDogWalker } from './people.js';
 import { buildSchool } from './school3d.js';
-import { routeTo, canWalk, facts, reportLines, gossipLines, COOLER } from './errands.js';
+import { routeTo, canWalk, facts, reportLines, gossipLines, drinkLine, COOLER, MACHINES } from './errands.js';
 
 // Person position on the floor; ry rotates the station so that ry=0 faces -Z (towards the back wall).
 const STATIONS = [
@@ -28,8 +28,9 @@ export const CAMERAS = [
   { id: 'cam08', label: 'PESQUISA', target: [8.6, 1.5, -4.4], offset: [16, 10, 4], zoom: 2.1 },
   { id: 'cam09', label: 'LOUNGE', target: [7.6, 0.6, 6.2], offset: [12, 13, 17], zoom: 1.9 },
   { id: 'cam10', label: 'ESCOLA DE TRADERS', target: [-2.2, 1.4, 5.3], offset: [13, 16, 3], zoom: 1.8 },
+  { id: 'cam11', label: 'COPA', target: [10.5, 0.3, 2.9], offset: [6, 7, 16], zoom: 2.1 },
 ];
-const TOUR = ['cam02', 'cam06', 'cam05', 'cam03', 'cam07', 'cam10', 'cam09', 'cam04', 'cam08', 'cam01'];
+const TOUR = ['cam02', 'cam06', 'cam05', 'cam03', 'cam07', 'cam10', 'cam11', 'cam09', 'cam04', 'cam08', 'cam01'];
 const FOCUS = { ceo: 'cam03', risk: 'cam04', trader: 'cam05', analyst: 'cam06', scientist: 'cam08', auditor: 'cam08' };
 const TOUR_MS = 7000;
 
@@ -157,6 +158,8 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
   box(scene, [0.55, 0.95, 0.55], [cx, 0.48, cz], '#e9eef2');
   box(scene, [0.42, 0.55, 0.42], [cx, 1.25, cz], '#7cc3ea', { transparent: true, opacity: 0.75 });
   box(scene, [0.12, 0.08, 0.1], [cx - 0.3, 0.8, cz], '#3b82c4');
+  buildCoffeeMachine(kit, scene, MACHINES.coffee.at);
+  const vending = buildVending(kit, scene, MACHINES.energy.at);
   drawTv(tv, 0, false);
 
   // ── Data → screens and reactions ──────────────────────────────────────
@@ -336,6 +339,11 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
   }
   const bossBusy = () => people.some(p => p.errand && ['report', 'closed'].includes(p.errand.kind));
   const coolerBusy = () => people.some(p => p.errand?.kind === 'cooler');
+  const machineBusy = kind => people.some(p => p.errand?.kind === kind);
+  function startDrink(p, kind, f) {
+    if (machineBusy(kind)) return false;
+    return sendOn(p, kind, routeTo(p.s.id, kind), { hold: 8, lines: [[p.s.id, drinkLine(p.s.id, kind, f)]] });
+  }
   function startReport(p, lines) {
     if (!lines || bossBusy()) return false;
     return sendOn(p, 'report', routeTo(p.s.id, 'boss'), { hold: 9, lines: [[p.s.id, lines[0]], ['ceo', lines[1]]] });
@@ -394,13 +402,20 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
       job.tries = (job.tries || 0) + 1;
       if (ok || job.tries > 60) { pending.splice(i, 1); i--; }
     }
-    // Now and then, someone free takes a walk.
+    // Now and then, someone free takes a walk: a chat, a report, or a coffee/energy drink.
     if (motion && now > nextIdleAt) {
-      nextIdleAt = now + 25_000 + Math.random() * 30_000;
-      if (Math.random() < 0.5 || !startGossip(f)) {
-        const free = people.filter(p => isFree(p) && reportLines(p.s.id, f));
-        const who = free[Math.floor(Math.random() * free.length)];
+      nextIdleAt = now + 20_000 + Math.random() * 25_000;
+      const roll = Math.random();
+      const pick = list => list[Math.floor(Math.random() * list.length)];
+      if (roll < 0.35) startGossip(f);
+      else if (roll < 0.65) {
+        const who = pick(people.filter(p => isFree(p) && reportLines(p.s.id, f)));
         if (who) startReport(who, reportLines(who.s.id, f));
+      } else {
+        // Lucas only gets up for an energy drink when the desk is full (nothing to do anyway).
+        const drinkers = people.filter(p => isFree(p) || (p.s.id === 'trader' && f.deskFull && atDesk(p) && !lucas.wantLounge));
+        const who = pick(drinkers);
+        if (who) startDrink(who, who.s.id === 'trader' || Math.random() < 0.4 ? 'energy' : 'coffee', f);
       }
     }
   }
@@ -457,6 +472,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
     school.tick(t, motion);
     dogBubble.tick(now);
     if (now - tvAt > 90) { tvAt = now; drawTv(tv, t, gaming); }
+    vending.glow.material.emissiveIntensity = 0.9 + (motion ? Math.sin(t * 2) * 0.25 : 0);
     if (beacon) beacon.material.emissiveIntensity = Math.sin(t * 3) > 0.6 ? 3 : 0.2;
     alarm.material.emissiveIntensity = trader()?.cooldown ? (Math.sin(t * 6) > 0 ? 2.5 : 0.3) : 0;
 
@@ -505,6 +521,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
     // Dev only (window.__officeScene): start a walk now, to check the paths.
     debugErrand(kind, id = 'risk', other = 'auditor') {
       const p = byId(id), f = facts(data);
+      if (kind === 'coffee' || kind === 'energy') return startDrink(p, kind, f);
       if (kind === 'cooler') { const q = byId(other); sendOn(p, 'cooler', routeTo(id, 'cooler', 0), { hold: 13, lines: gossipLines(f, id, other) }); sendOn(q, 'cooler', routeTo(other, 'cooler', 1), { hold: 13 }); p.errand.partner = q; q.errand.partner = p; }
       else startReport(p, reportLines(id, f) || ['Teste.', 'Ok.']);
     },
@@ -579,6 +596,59 @@ function buildDesk(kit, g, s) {
     screens.push(canvasPanel(mount, 0.9, 0.54, [0, 1.6, 0.035], makeCanvas(320, 192)));
   }
   return screens;
+}
+
+// Espresso machine on a small counter (front faces +Z).
+function buildCoffeeMachine(kit, scene, [x, z]) {
+  const { box, group } = kit;
+  const g = group(scene, [x, 0, z]);
+  box(g, [1.1, 1.0, 0.75], [0, 0.5, 0], '#5a6670');
+  box(g, [1.15, 0.06, 0.8], [0, 1.03, 0], '#d6c3a5');
+  box(g, [0.55, 0.62, 0.5], [-0.15, 1.37, -0.05], '#2b2f36');
+  box(g, [0.36, 0.2, 0.06], [-0.15, 1.5, 0.22], '#b8c0c8');
+  box(g, [0.06, 0.06, 0.03], [-0.32, 1.6, 0.21], '#ff4d4d', { emissive: '#ff4d4d', emissiveIntensity: 1.5 }, { shadow: false });
+  box(g, [0.14, 0.14, 0.14], [-0.15, 1.13, 0.12], '#f4f1ea');
+  for (let i = 0; i < 3; i++) box(g, [0.14, 0.16, 0.14], [0.2, 1.14 + i * 0.16, 0.18], '#f4f1ea');
+  box(g, [0.24, 0.36, 0.24], [0.38, 1.24, -0.1], '#7a4b2a'); // coffee beans jar
+}
+
+// Energy-drink vending machine with a glowing front (generic brand, front faces +Z).
+function buildVending(kit, scene, [x, z]) {
+  const { box, group } = kit;
+  const g = group(scene, [x, 0, z]);
+  box(g, [1.05, 2.15, 0.85], [0, 1.08, 0], '#15181d');
+  const glow = box(g, [0.95, 0.12, 0.04], [0, 2.05, 0.44], '#38e8ff', { emissive: '#38e8ff', emissiveIntensity: 1 }, { shadow: false });
+  const front = canvasPanel(g, 0.92, 1.6, [0, 1.13, 0.435], makeCanvas(184, 320));
+  drawVending(front);
+  return { glow };
+}
+
+function drawVending({ ctx, texture }) {
+  const W = 184, H = 320;
+  ctx.fillStyle = '#0b0e12';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#38e8ff';
+  ctx.font = '900 30px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('VOLT ⚡', W / 2, 36);
+  ctx.font = '700 13px sans-serif';
+  ctx.fillStyle = '#9fb3c8';
+  ctx.fillText('ENERGÉTICO GELADO', W / 2, 56);
+  const colors = ['#38e8ff', '#a3ff3c', '#ff5ad1', '#ffd23f'];
+  for (let row = 0; row < 4; row++) {
+    ctx.fillStyle = '#1b222b';
+    ctx.fillRect(10, 72 + row * 52, W - 20, 46);
+    for (let col = 0; col < 4; col++) {
+      const cx = 22 + col * 36, cy = 78 + row * 52;
+      ctx.fillStyle = '#20252c';
+      ctx.fillRect(cx, cy, 24, 36);
+      ctx.fillStyle = colors[(row + col) % colors.length];
+      ctx.fillRect(cx, cy + 12, 24, 10);
+    }
+  }
+  ctx.fillStyle = '#2a323c';
+  ctx.fillRect(10, 284, W - 20, 18);
+  texture.needsUpdate = true;
 }
 
 function buildFloor(kit, scene) {

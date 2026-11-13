@@ -36,7 +36,9 @@ export const STUDENTS = [
 
 // Troca de turma (13/11/2026: bot passou ao perfil v2). Mudar a turma zera o papel:
 // trades em papel da turma antiga não valem para alunos com outros parâmetros.
+// O arquivo de papel precisa estar em DATA_FILES (datafs.js) para persistir no Upstash.
 export const SCHOOL_VERSION = "v2";
+export const PAPER_FILE = `school-paper-${SCHOOL_VERSION}.jsonl`;
 
 export const SCHOOL_RULES = { split: 0.7, minStudy: 15, minExam: 6, minPaper: 10 };
 
@@ -188,7 +190,7 @@ export function createSchool({ loadInputs, dataDir, symbols = ["BTCUSDT", "ETHUS
   interval = "60", baseParams = {}, everyMs = 30 * 60_000, now = Date.now, onChange = () => {}, onEvent = () => {},
   rules = SCHOOL_RULES, promoteEnabled = false, backtest = runBacktest, students = STUDENTS } = {}) {
   const stateFile = fileIn(dataDir, "school.json");
-  const paperFile = fileIn(dataDir, `school-paper-${SCHOOL_VERSION}.jsonl`);
+  const paperFile = fileIn(dataDir, PAPER_FILE);
   let saved = readSchoolState(dataDir);
   if (saved && saved.version !== SCHOOL_VERSION) saved = null; // turma nova: começa do zero
   let startedAt = saved?.startedAt || now();

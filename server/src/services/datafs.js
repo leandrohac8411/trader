@@ -13,7 +13,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 export const DATA_FILES = [
   "bot-state.json", "bot-trades.jsonl", "bot-events.jsonl", "office-events.jsonl",
-  "school.json", "school-paper.jsonl", "manager-review.json", "monitor-state.json", "tick-state.json",
+  "school.json", "school-paper.jsonl", "school-paper-v2.jsonl", "manager-review.json", "monitor-state.json", "tick-state.json",
 ];
 
 const PREFIX = process.env.STORE_PREFIX || "crypto:";

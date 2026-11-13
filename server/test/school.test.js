@@ -116,6 +116,13 @@ test("createSchool busca as velas do período de cada aluno (1h e 4h)", async ()
   } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });
 
+test("o arquivo de papel da turma atual persiste no Upstash (DATA_FILES)", async () => {
+  const { PAPER_FILE } = await import("../src/services/school.js");
+  const { DATA_FILES } = await import("../src/services/datafs.js");
+  assert.ok(DATA_FILES.includes(PAPER_FILE));
+  assert.ok(DATA_FILES.includes("school.json"));
+});
+
 test("STUDENTS: ids únicos e a turma base é o bot", () => {
   assert.equal(new Set(STUDENTS.map((s) => s.id)).size, STUDENTS.length);
   assert.deepEqual(STUDENTS.find((s) => s.id === "base").params, {});

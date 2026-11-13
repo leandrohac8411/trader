@@ -13,6 +13,8 @@ function fakeRedis() {
     if (cmd === "SET") { if (a.includes("NX") && db.has(a[0])) return null; db.set(a[0], a[1]); return "OK"; }
     if (cmd === "APPEND") { db.set(a[0], (db.get(a[0]) || "") + a[1]); return db.get(a[0]).length; }
     if (cmd === "HINCRBY") { const h = db.get(a[0]) || {}; h[a[1]] = (h[a[1]] || 0) + Number(a[2]); db.set(a[0], h); return h[a[1]]; }
+    if (cmd === "GETRANGE") { const v = db.get(a[0]); return v == null ? "" : Buffer.from(v, "utf8").subarray(Number(a[1])).toString("utf8"); }
+    if (cmd === "HGET") { const h = db.get(a[0]) || {}; return h[a[1]] == null ? null : String(h[a[1]]); }
     if (cmd === "HGETALL") return Object.entries(db.get(a[0]) || {}).flat().map(String);
     throw new Error(cmd);
   };
@@ -50,10 +52,10 @@ test("cache por versão: só baixa o que mudou e acrescenta com APPEND", async (
   t.after(() => datafs.configure({ client: null }));
   const ev = new URL("bot-events.jsonl", DATA);
   assert.ok((await datafs.withContext(() => datafs.hydrate())) > 0); // primeira vez: baixa tudo
-  // segunda requisição sem mudanças: nenhum MGET
+  // segunda requisição sem mudanças: só lê as versões
   r.calls.length = 0;
   assert.equal(await datafs.withContext(() => datafs.hydrate()), 0);
-  assert.ok(!r.calls.includes("MGET"));
+  assert.deepEqual(r.calls, ["HGETALL"]);
   // acrescentar uma linha vai com APPEND (sem reenviar o arquivo)
   await datafs.withContext(async () => {
     await datafs.hydrate();
@@ -63,11 +65,13 @@ test("cache por versão: só baixa o que mudou e acrescenta com APPEND", async (
   });
   assert.ok(r.calls.includes("APPEND") && !r.calls.includes("SET"));
   assert.equal(r.db.get("crypto:bot-events.jsonl"), "e1\ne2\n");
-  // outra instância grava no meio: a próxima leitura baixa de novo e enxerga as duas linhas
-  r.db.set("crypto:bot-events.jsonl", "e1\ne2\nE3\n");
+  // outra instância acrescenta uma linha (com acento): a próxima leitura baixa só o trecho novo
+  r.db.set("crypto:bot-events.jsonl", "e1\ne2\nÉ3\n");
   r.db.get("crypto:ver")["bot-events.jsonl"] += 1;
+  r.calls.length = 0;
   const seen = await datafs.withContext(async () => { await datafs.hydrate(); return datafs.readFileSync(ev, "utf8"); });
-  assert.equal(seen, "e1\ne2\nE3\n");
+  assert.equal(seen, "e1\ne2\nÉ3\n");
+  assert.ok(r.calls.includes("GETRANGE") && !r.calls.includes("GET"));
   // reescrever (cortar o arquivo) usa SET
   await datafs.withContext(async () => {
     await datafs.hydrate();
@@ -77,6 +81,14 @@ test("cache por versão: só baixa o que mudou e acrescenta com APPEND", async (
   });
   assert.ok(r.calls.includes("SET"));
   assert.equal(r.db.get("crypto:bot-events.jsonl"), "E3\n");
+  // outra instância reescreveu (gen mudou): quem lê baixa o arquivo inteiro
+  r.db.get("crypto:ver")["bot-events.jsonl#gen"] += 1;
+  r.db.get("crypto:ver")["bot-events.jsonl"] += 1;
+  r.db.set("crypto:bot-events.jsonl", "novo\n");
+  r.calls.length = 0;
+  const after = await datafs.withContext(async () => { await datafs.hydrate(); return datafs.readFileSync(ev, "utf8"); });
+  assert.equal(after, "novo\n");
+  assert.ok(r.calls.includes("GET") && !r.calls.includes("GETRANGE"));
 });
 
 test("gravação concorrente invalida o cache (não reescreve por cima do que não viu)", async (t) => {

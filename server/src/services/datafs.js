@@ -9,7 +9,9 @@
 // Economia de banda (o plano do Upstash tem limite):
 // - cada arquivo tem um número de versão no hash "<prefixo>ver"; a instância guarda os arquivos
 //   em cache e, a cada requisição, lê só as versões (poucos bytes) e baixa só o que mudou;
-// - linhas acrescentadas (appendFileSync) vão com APPEND, sem reenviar o arquivo inteiro.
+// - linhas acrescentadas (appendFileSync) vão com APPEND, sem reenviar o arquivo inteiro;
+// - quem lê um arquivo que só cresceu baixa só o trecho novo (GETRANGE a partir do byte que já tem).
+//   "<arquivo>#gen" conta as reescritas inteiras: mudou, baixa o arquivo todo de novo.
 //
 // Só arquivos da pasta de dados passam por aqui (a chave é o nome do arquivo).
 import * as fs from "node:fs";
@@ -24,7 +26,9 @@ export const DATA_FILES = [
 const PREFIX = process.env.STORE_PREFIX || "crypto:";
 const VER_KEY = () => `${PREFIX}ver`;
 // Cache da instância (sobrevive entre requisições numa função "quente" do Vercel).
-const cache = new Map(); // arquivo -> { ver:number, value:string|null }
+const cache = new Map(); // arquivo -> { ver, gen, value:string|null, at }
+const FULL_REFRESH_MS = 60 * 60_000; // uma vez por hora baixa tudo, por garantia
+const bytes = (v) => Buffer.byteLength(v ?? "", "utf8");
 let client = null; // { exec(cmd[]), pipeline(cmd[][]) }
 // Cada requisição tem a sua cópia em memória (requisições simultâneas na mesma instância
 // não apagam o trabalho uma da outra). Fora de withContext usa um contexto global (testes).
@@ -87,11 +91,23 @@ async function readVersions() {
 export async function hydrate() {
   if (!client) return;
   const vers = await readVersions();
-  const stale = DATA_FILES.filter((f) => !cache.has(f) || cache.get(f).ver !== (vers[f] || 0));
-  if (stale.length) {
-    const values = await client.exec(["MGET", ...stale.map((f) => PREFIX + f)]);
-    stale.forEach((f, i) => cache.set(f, { ver: vers[f] || 0, value: values?.[i] ?? null }));
+  const now = Date.now();
+  const jobs = [];
+  for (const f of DATA_FILES) {
+    const ver = vers[f] || 0, gen = vers[`${f}#gen`] || 0, hit = cache.get(f);
+    if (hit && hit.ver === ver && hit.gen === gen && now - hit.at < FULL_REFRESH_MS) continue;
+    const delta = hit && hit.gen === gen && hit.value != null && now - hit.at < FULL_REFRESH_MS;
+    jobs.push({ f, ver, gen, delta, cmd: delta ? ["GETRANGE", PREFIX + f, String(bytes(hit.value)), "-1"] : ["GET", PREFIX + f] });
   }
+  if (jobs.length) {
+    const res = await client.pipeline(jobs.map((j) => j.cmd));
+    jobs.forEach((j, i) => {
+      const hit = cache.get(j.f);
+      if (j.delta) cache.set(j.f, { ...hit, ver: j.ver, value: hit.value + (res[i] || "") });
+      else cache.set(j.f, { ver: j.ver, gen: j.gen, value: res[i] ?? null, at: now });
+    });
+  }
+  const stale = jobs;
   const c = ctx();
   Object.assign(c, newCtx());
   for (const f of DATA_FILES) {
@@ -112,16 +128,18 @@ export async function persist() {
     const value = mem.get(f) ?? "";
     const from = base.get(f) ?? 0;
     // Só acrescentou linhas? Envia só o pedaço novo.
-    if (!rewritten.has(f) && base.has(f) && value.length >= from) cmds.push(["APPEND", PREFIX + f, value.slice(from)]);
+    const append = !rewritten.has(f) && base.has(f) && value.length >= from;
+    if (append) cmds.push(["APPEND", PREFIX + f, value.slice(from)]);
     else cmds.push(["SET", PREFIX + f, value]);
     cmds.push(["HINCRBY", VER_KEY(), f, 1]);
+    cmds.push(append ? ["HGET", VER_KEY(), `${f}#gen`] : ["HINCRBY", VER_KEY(), `${f}#gen`, 1]);
   }
   const res = await client.pipeline(cmds);
   names.forEach((f, i) => {
-    const ver = Number(res[i * 2 + 1]);
-    const before = cache.get(f)?.ver ?? 0;
+    const ver = Number(res[i * 3 + 1]), gen = Number(res[i * 3 + 2]) || 0;
+    const hit = cache.get(f);
     // Se outra instância gravou no meio, o cache pode estar incompleto: força baixar de novo.
-    if (ver === before + 1) cache.set(f, { ver, value: mem.get(f) ?? "" });
+    if (hit && ver === hit.ver + 1) cache.set(f, { ver, gen, value: mem.get(f) ?? "", at: hit.at });
     else cache.delete(f);
     base.set(f, (mem.get(f) ?? "").length);
   });
@@ -154,6 +172,7 @@ export async function uploadLocal(dataDir, c = client) {
     if (!fs.existsSync(p)) continue;
     await c.exec(["SET", PREFIX + f, fs.readFileSync(p, "utf8")]);
     await c.exec(["HINCRBY", VER_KEY(), f, 1]);
+    await c.exec(["HINCRBY", VER_KEY(), `${f}#gen`, 1]);
     sent.push(f);
   }
   return sent;

@@ -62,6 +62,25 @@ export function tfMinutes(tf) {
   return parseInt(s, 10) || 1;
 }
 
+/**
+ * Só as velas FECHADAS (a Bybit devolve a vela em formação como a última).
+ * O backtest decide com velas fechadas; o bot ao vivo tem de seguir a mesma regra,
+ * senão um sinal no meio da vela pode sumir quando ela fecha.
+ */
+export function closedCandles(candles, tf, now = Date.now()) {
+  const ms = tfMinutes(tf) * 60_000;
+  return candles.filter((c) => Number(c.ts) + ms <= now);
+}
+
+/**
+ * A entrada é a mercado, ao preço de AGORA, não ao fechamento da vela.
+ * Só entra se o preço atual ainda estiver entre o stop e o alvo (do lado certo).
+ */
+export function entryStillValid({ dir, live, stop, tp }) {
+  if (![live, stop, tp].every(Number.isFinite)) return false;
+  return dir === "LONG" ? live > stop && live < tp : dir === "SHORT" ? live < stop && live > tp : false;
+}
+
 export function cooldownMs(tf, candles = CFG.reentryCooldown) {
   return tfMinutes(tf) * candles * 60_000;
 }
@@ -276,12 +295,15 @@ export async function tickOnce() {
         });
 
         let candles;
+        let livePrice = null;
         let htfCloses = null;
         try {
-          candles = await getKlines({ symbol, interval: tf, limit: 300 });
+          const raw = await getKlines({ symbol, interval: tf, limit: 300 });
+          livePrice = Number(raw.at(-1)?.close);
+          candles = closedCandles(raw, tf);
           try {
             const h = await getKlines({ symbol, interval: higherTF(tf), limit: 300 });
-            htfCloses = h.map((c) => c.close);
+            htfCloses = closedCandles(h, higherTF(tf)).map((c) => c.close);
           } catch {
             /* HTF opcional */
           }
@@ -404,6 +426,12 @@ export async function tickOnce() {
             cd: cooldownMs(tf),
           })
         ) {
+          if (!entryStillValid({ dir: signal, live: livePrice, stop: a.levels.stop, tp: a.levels.tp1 })) {
+            log.push(`${key}: sinal ${signal} na vela fechada, mas o preço atual (${livePrice}) já saiu da faixa stop/alvo`);
+            ks.lastSignal = signal;
+            continue;
+          }
+          a = { ...a, price: livePrice }; // tamanho e registro pelo preço real de entrada
           try {
             const instr = await demo.getInstrument(symbol);
             const side = signal === "LONG" ? "Buy" : "Sell";

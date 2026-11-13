@@ -17,6 +17,8 @@ const {
   aggregateTrades,
   appendEvent,
   readEvents,
+  closedCandles,
+  entryStillValid,
 } = await import("../src/services/bot.js");
 const { signV5, assertDemoBase, DEMO_BASE } = await import("../src/services/bybit-demo.js");
 
@@ -165,4 +167,23 @@ test("roundToStep não deixa resíduo de ponto flutuante (Bybit recusa)", () => 
   assert.equal(String(roundToStep(417.73, 0.1)), "417.7");
   assert.equal(String(roundToStep(2121.770944, 0.01)), "2121.77");
   assert.equal(roundToStep(17.069, 0.01), 17.06);
+});
+
+test("closedCandles descarta a vela em formação (igual ao backtest)", () => {
+  const h = 3_600_000, t0 = Date.UTC(2026, 10, 13, 10);
+  const c = [0, 1, 2].map((i) => ({ ts: t0 + i * h, close: i }));
+  // 12:20: as velas das 10h e 11h fecharam; a das 12h ainda está em formação
+  assert.deepEqual(closedCandles(c, "60", t0 + 2 * h + 20 * 60_000).map((x) => x.close), [0, 1]);
+  // 13:00 em ponto: a das 12h acabou de fechar
+  assert.equal(closedCandles(c, "60", t0 + 3 * h).length, 3);
+  assert.equal(closedCandles(c, "240", t0 + 3 * h).length, 0);
+});
+
+test("entryStillValid: só entra se o preço atual ainda estiver entre stop e alvo", () => {
+  assert.equal(entryStillValid({ dir: "SHORT", live: 100, stop: 105, tp: 92 }), true);
+  assert.equal(entryStillValid({ dir: "SHORT", live: 106, stop: 105, tp: 92 }), false); // passou do stop
+  assert.equal(entryStillValid({ dir: "SHORT", live: 91, stop: 105, tp: 92 }), false); // já bateu o alvo
+  assert.equal(entryStillValid({ dir: "LONG", live: 100, stop: 95, tp: 108 }), true);
+  assert.equal(entryStillValid({ dir: "LONG", live: 94, stop: 95, tp: 108 }), false);
+  assert.equal(entryStillValid({ dir: "LONG", live: NaN, stop: 95, tp: 108 }), false);
 });

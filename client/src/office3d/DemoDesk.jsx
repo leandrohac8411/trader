@@ -77,7 +77,8 @@ export default function DemoDesk({ snapshot, connected }) {
   return <section className="demo-desk" aria-label="Mesa demo: resultado da conta">
     <div className={`desk-verdict v-${res.verdict.code}`}>
       <div><span className="goal-eyebrow">A ESTRATÉGIA ESTÁ GANHANDO NA DEMO?</span>
-        <h2>{res.verdict.label}</h2><p>{res.verdict.detail}</p></div>
+        <h2>{res.verdict.label}</h2><p>{res.verdict.detail}</p>
+        {res.since && <small className="desk-since">Contando desde {new Date(res.since).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}, quando começou a rodada atual do bot.{res.excluded ? ` ${res.excluded} trade${res.excluded === 1 ? '' : 's'} de rodadas antigas (configuração anterior) fica${res.excluded === 1 ? '' : 'm'} de fora.` : ''}</small>}</div>
       <div className="desk-status"><i className={bot?.enabled && !bot?.paused ? 'on' : ''} />{status}</div>
     </div>
 

@@ -39,9 +39,14 @@ export function dailyResults(trades = [], { days = 30, timeZone = DAY_TZ } = {})
     .map((d) => ({ ...d, gainUsd: round(d.gainUsd), lossUsd: round(d.lossUsd), netUsd: round(d.netUsd) }));
 }
 
-export function computeResults(trades = [], { minSample = MIN_SAMPLE } = {}) {
-  const list = trades
-    .filter((t) => Number.isFinite(Number(t.netR)))
+/** Começo da rodada atual na demo (configuração atual do bot). Trades abertos antes ficam fora. */
+export const RESULTS_SINCE = "2026-11-11T00:00:00Z";
+
+export function computeResults(trades = [], { minSample = MIN_SAMPLE, since = null } = {}) {
+  const sinceTs = since ? Date.parse(since) : 0;
+  const valid = trades.filter((t) => Number.isFinite(Number(t.netR)));
+  const list = valid
+    .filter((t) => { const ts = t.openedAt || t.closedAt; return !sinceTs || !ts || ts >= sinceTs; })
     .sort((a, b) => (a.closedAt || 0) - (b.closedAt || 0));
   const rs = list.map((t) => Number(t.netR));
   const usd = list.map((t) => Number(t.pnlUsd) || 0);
@@ -72,6 +77,8 @@ export function computeResults(trades = [], { minSample = MIN_SAMPLE } = {}) {
     detail: `Expectativa entre ${round(mean - half, 3)} e ${round(mean + half, 3)} R por trade (95%): pode ser positiva ou negativa. Precisa de mais trades.` };
 
   return {
+    since: sinceTs ? new Date(sinceTs).toISOString() : null,
+    excluded: valid.length - list.length,
     n,
     wins: wins.length,
     losses: losses.length,

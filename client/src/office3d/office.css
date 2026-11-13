@@ -343,3 +343,4 @@
   .daily-list li{grid-template-columns:62px 1fr auto;grid-template-areas:"date bars net" "date nums nums";gap:4px 10px}
   .daily-date{grid-area:date}.daily-bars{grid-area:bars}.daily-nums{grid-area:nums;justify-content:flex-start;gap:14px}.daily-net{grid-area:net}
 }
+.desk-verdict .desk-since{display:block;margin-top:6px;font-size:10px;color:#7f97a3}

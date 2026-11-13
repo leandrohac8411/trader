@@ -5,7 +5,7 @@ import { createMarketMonitor } from './market-monitor.js';
 import { computeTraderMood } from './crew.js';
 import { computeLadder, computeGoal, computeAchievements } from './game.js';
 import { createSchool } from './school.js';
-import { computeResults } from './results.js';
+import { computeResults, RESULTS_SINCE } from './results.js';
 
 export const TEAM = [
   { id: 'ceo', name: 'Arthur', role: 'CEO', color: '#e6ad63', task: 'Consolida resultados e incidentes.', action: 'Preparar relatório' },
@@ -110,7 +110,7 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
       crew: { trader: { ...trader, source: 'local-history' } },
       game: gameState(trades, state, bot.CFG),
       // Resultado da conta demo: todos os trades encerrados registrados pelo bot.
-      results: computeResults(bot.readTrades(0)),
+      results: computeResults(bot.readTrades(0), { since: process.env.BOT_RESULTS_SINCE || RESULTS_SINCE }),
       school: school ? school.snapshot() : null,
       scheduler: schedulerState(),
       // Propostas do bot e a decisão do Ricardo (registro local do bot).

@@ -48,3 +48,19 @@ test("dailyResults: ganho, perda e líquido por dia no horário de Brasília", a
   assert.deepEqual(d[1], { day: "2026-11-11", trades: 2, wins: 1, losses: 1, gainUsd: 726, lossUsd: -400, netUsd: 326 });
   assert.equal(dayKey(at("2026-11-13T02:59:00Z")), "2026-11-12");
 });
+
+test("computeResults conta só a rodada atual (trades abertos antes de 'since' ficam fora)", () => {
+  const at = (iso) => Date.parse(iso);
+  const trades = [
+    { netR: -1, pnlUsd: -268.91, openedAt: at("2026-09-01T17:10:00Z"), closedAt: at("2026-09-01T17:11:00Z") },
+    { netR: 1.4, pnlUsd: 766.12, openedAt: at("2026-09-03T03:01:00Z"), closedAt: at("2026-09-03T11:19:00Z") },
+    { netR: 1.5, pnlUsd: 695.04, openedAt: at("2026-11-11T17:47:00Z"), closedAt: at("2026-11-11T23:07:00Z") },
+    { netR: -1, pnlUsd: -876.4, openedAt: at("2026-11-13T02:42:00Z"), closedAt: at("2026-11-13T13:38:00Z") },
+  ];
+  const r = computeResults(trades, { since: "2026-11-11T00:00:00Z" });
+  assert.equal(r.n, 2);
+  assert.equal(r.excluded, 2);
+  assert.equal(r.totalPnlUsd, -181.36);
+  assert.equal(r.since, "2026-11-11T00:00:00.000Z");
+  assert.equal(computeResults(trades, { since: null }).n, 4);
+});

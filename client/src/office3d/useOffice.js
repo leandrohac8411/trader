@@ -25,7 +25,8 @@ export default function useOffice() {
     try {const json=await API.get('/api/office/snapshot');setSnapshot(json.data);setError('');reconnect.current?.();}
     catch {setError('Não foi possível consultar o servidor. Verifique se o backend está ligado.');}
   },[]);
-  // Vercel (serverless) não mantém conexão aberta: consulta o snapshot a cada 10 s.
+  // Vercel (serverless) não mantém conexão aberta: consulta o snapshot a cada 15 s,
+  // só com a aba visível (aba escondida não gasta banda do Upstash) e de novo ao voltar.
   useEffect(()=>{
     if(!POLL)return undefined;
     let alive=true,lastRefresh=0;
@@ -44,8 +45,11 @@ export default function useOffice() {
       }
       catch{if(alive)setConnection('reconnecting');}
     };
-    load();const timer=setInterval(load,10_000);
-    return()=>{alive=false;clearInterval(timer);};
+    const visible=()=>!document.hidden;
+    load();const timer=setInterval(()=>{if(visible())load();},15_000);
+    const onShow=()=>{if(visible())load();};
+    document.addEventListener('visibilitychange',onShow);
+    return()=>{alive=false;clearInterval(timer);document.removeEventListener('visibilitychange',onShow);};
   },[notify]);
   useEffect(()=>{
     if(POLL)return undefined;

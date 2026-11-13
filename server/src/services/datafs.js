@@ -6,6 +6,11 @@
 //   requisição, hydrate() traz tudo para a memória; o código continua lendo/gravando de forma
 //   síncrona; no fim, persist() grava de volta SÓ o que mudou. Cada arquivo é uma chave.
 //
+// Economia de banda (o plano do Upstash tem limite):
+// - cada arquivo tem um número de versão no hash "<prefixo>ver"; a instância guarda os arquivos
+//   em cache e, a cada requisição, lê só as versões (poucos bytes) e baixa só o que mudou;
+// - linhas acrescentadas (appendFileSync) vão com APPEND, sem reenviar o arquivo inteiro.
+//
 // Só arquivos da pasta de dados passam por aqui (a chave é o nome do arquivo).
 import * as fs from "node:fs";
 import { basename } from "node:path";
@@ -13,18 +18,22 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 export const DATA_FILES = [
   "bot-state.json", "bot-trades.jsonl", "bot-events.jsonl", "office-events.jsonl",
-  "school.json", "school-paper.jsonl", "school-paper-v2.jsonl", "manager-review.json", "monitor-state.json", "tick-state.json",
+  "school.json", "school-paper-v2.jsonl", "manager-review.json", "monitor-state.json", "tick-state.json",
 ];
 
 const PREFIX = process.env.STORE_PREFIX || "crypto:";
+const VER_KEY = () => `${PREFIX}ver`;
+// Cache da instância (sobrevive entre requisições numa função "quente" do Vercel).
+const cache = new Map(); // arquivo -> { ver:number, value:string|null }
 let client = null; // { exec(cmd[]), pipeline(cmd[][]) }
 // Cada requisição tem a sua cópia em memória (requisições simultâneas na mesma instância
 // não apagam o trabalho uma da outra). Fora de withContext usa um contexto global (testes).
 const als = new AsyncLocalStorage();
-const globalCtx = { mem: new Map(), dirty: new Set(), hydrated: false };
+const newCtx = () => ({ mem: new Map(), dirty: new Set(), rewritten: new Set(), base: new Map(), hydrated: false });
+const globalCtx = newCtx();
 const ctx = () => als.getStore() || globalCtx;
 export function withContext(fn) {
-  return als.run({ mem: new Map(), dirty: new Set(), hydrated: false }, fn);
+  return als.run(newCtx(), fn);
 }
 
 const nameOf = (p) => basename(p instanceof URL ? decodeURIComponent(p.pathname) : String(p).replace(/\\/g, "/"));
@@ -60,29 +69,63 @@ export function configureFromEnv(env = process.env) {
 /** Para testes e para o modo serverless. Passe { client: null } para voltar ao disco. */
 export function configure({ client: c }) {
   client = c;
-  globalCtx.mem.clear();
-  globalCtx.dirty.clear();
-  globalCtx.hydrated = false;
+  Object.assign(globalCtx, newCtx());
+  cache.clear();
 }
 
 export const isRedis = () => !!client;
 
+/** Versões atuais de cada arquivo (HGETALL devolve [campo, valor, campo, valor, ...]). */
+async function readVersions() {
+  const flat = (await client.exec(["HGETALL", VER_KEY()])) || [];
+  const out = {};
+  if (Array.isArray(flat)) for (let i = 0; i < flat.length; i += 2) out[flat[i]] = Number(flat[i + 1]) || 0;
+  else Object.assign(out, flat);
+  return out;
+}
+
 export async function hydrate() {
   if (!client) return;
-  const values = await client.exec(["MGET", ...DATA_FILES.map((f) => PREFIX + f)]);
+  const vers = await readVersions();
+  const stale = DATA_FILES.filter((f) => !cache.has(f) || cache.get(f).ver !== (vers[f] || 0));
+  if (stale.length) {
+    const values = await client.exec(["MGET", ...stale.map((f) => PREFIX + f)]);
+    stale.forEach((f, i) => cache.set(f, { ver: vers[f] || 0, value: values?.[i] ?? null }));
+  }
   const c = ctx();
-  c.mem.clear();
-  c.dirty.clear();
-  DATA_FILES.forEach((f, i) => { if (values?.[i] != null) c.mem.set(f, values[i]); });
+  Object.assign(c, newCtx());
+  for (const f of DATA_FILES) {
+    const v = cache.get(f)?.value;
+    if (v != null) { c.mem.set(f, v); c.base.set(f, v.length); }
+  }
   c.hydrated = true;
+  return stale.length;
 }
 
 export async function persist() {
-  const { mem, dirty } = ctx();
+  const { mem, dirty, rewritten, base } = ctx();
   if (!client || !dirty.size) return 0;
   const names = [...dirty];
   dirty.clear();
-  await client.pipeline(names.map((f) => ["SET", PREFIX + f, mem.get(f) ?? ""]));
+  const cmds = [];
+  for (const f of names) {
+    const value = mem.get(f) ?? "";
+    const from = base.get(f) ?? 0;
+    // Só acrescentou linhas? Envia só o pedaço novo.
+    if (!rewritten.has(f) && base.has(f) && value.length >= from) cmds.push(["APPEND", PREFIX + f, value.slice(from)]);
+    else cmds.push(["SET", PREFIX + f, value]);
+    cmds.push(["HINCRBY", VER_KEY(), f, 1]);
+  }
+  const res = await client.pipeline(cmds);
+  names.forEach((f, i) => {
+    const ver = Number(res[i * 2 + 1]);
+    const before = cache.get(f)?.ver ?? 0;
+    // Se outra instância gravou no meio, o cache pode estar incompleto: força baixar de novo.
+    if (ver === before + 1) cache.set(f, { ver, value: mem.get(f) ?? "" });
+    else cache.delete(f);
+    base.set(f, (mem.get(f) ?? "").length);
+  });
+  rewritten.clear();
   return names.length;
 }
 
@@ -110,6 +153,7 @@ export async function uploadLocal(dataDir, c = client) {
     const p = new URL(f, dataDir);
     if (!fs.existsSync(p)) continue;
     await c.exec(["SET", PREFIX + f, fs.readFileSync(p, "utf8")]);
+    await c.exec(["HINCRBY", VER_KEY(), f, 1]);
     sent.push(f);
   }
   return sent;
@@ -138,6 +182,7 @@ export function writeFileSync(p, data) {
   assertReady();
   ctx().mem.set(nameOf(p), String(data));
   ctx().dirty.add(nameOf(p));
+  ctx().rewritten.add(nameOf(p));
 }
 export function appendFileSync(p, data) {
   if (!client) return fs.appendFileSync(p, data);

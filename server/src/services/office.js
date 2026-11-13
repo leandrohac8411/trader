@@ -48,7 +48,8 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
     mkdirSync(dataDir, { recursive: true });
     appendFileSync(eventsFile, JSON.stringify(item) + '\n');
     const lines = readLines(eventsFile, 1000);
-    if (lines.length >= 1000) writeFileSync(eventsFile, lines.slice(-500).map(e => JSON.stringify(e)).join('\n') + '\n');
+    // A tela mostra 60: guarda até 300 (corta ao passar de 400) para não pesar no Upstash.
+    if (lines.length > 400) writeFileSync(eventsFile, lines.slice(-300).map(e => JSON.stringify(e)).join('\n') + '\n');
     return item;
   }
   function syncFromStore() {

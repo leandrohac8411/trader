@@ -19,7 +19,7 @@ function useDesk(enabled) {
       catch { if (alive) setError('Não foi possível consultar a conta demo agora.'); }
     };
     load();
-    const timer = setInterval(load, 30_000);
+    const timer = setInterval(() => { if (!document.hidden) load(); }, 30_000);
     return () => { alive = false; clearInterval(timer); };
   }, [enabled]);
   return { desk, error };

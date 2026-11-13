@@ -19,7 +19,7 @@ const TRADES_FILE = new URL("bot-trades.jsonl", DATA_DIR);
 const EVENTS_FILE = process.env.BOT_EVENTS_FILE
   ? new URL(process.env.BOT_EVENTS_FILE, DATA_DIR)
   : new URL("bot-events.jsonl", DATA_DIR);
-const MAX_EVENTS = 2000; // corta o arquivo pra não crescer sem fim
+const MAX_EVENTS = 500; // a tela lê no máximo 300; menos dados = menos banda no Upstash
 
 /**
  * Perfis validados em docs/validacao-estrategia.md (carteira 3 anos, treino 2023–25, teste 2026).

@@ -287,6 +287,7 @@ export function proposalsWithOutcome(events) {
     }
     return { ts: e.ts, decision: e.type, outcome, symbol: e.symbol, tf: e.tf, dir: e.dir || e.signal, probability: e.probability,
       riskPct: e.riskPct, notional: e.notional, riskUsd: e.riskUsd, reason: e.reason || null,
+      timeMachine: e.timeMachine && typeof e.timeMachine.text === 'string' ? { ok: !!e.timeMachine.ok, text: e.timeMachine.text.slice(0, 240) } : null,
       checks: Array.isArray(e.checks) ? e.checks.map(c => ({ label: c.label, ok: !!c.ok, detail: c.detail })) : [] };
   });
 }

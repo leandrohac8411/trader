@@ -128,7 +128,7 @@ export function ProposalsCard({ proposals, bot }) {
     <header>
       <div><span className="goal-eyebrow">PROPOSTA → APROVAÇÃO → EXECUÇÃO · RICARDO</span>
         <h3>Propostas do bot demo</h3>
-        <small>Cada entrada vira uma proposta; o Ricardo confere 8 limites (gate, stop/alvo, risco, tamanho, notional, perda no stop, vagas, ativo livre) e só então o bot executa. Barradas não viram ordem.</small></div>
+        <small>Cada entrada vira uma proposta; o Ricardo confere 8 limites (gate, stop/alvo, risco, tamanho, notional, perda no stop, vagas, ativo livre) e, se tudo passar, roda a Máquina do Tempo (10.000 replays do futuro + a mesma regra no histórico real). Só então o bot executa. Barradas não viram ordem.</small></div>
       <div className="proposals-tally"><span><b>{approved}</b> aprovadas · <b>{proposals.length - approved}</b> barradas</span><small>últimas {proposals.length}</small></div>
     </header>
     {!proposals.length ? <p className="quiet-copy">{bot?.enabled ? 'Nenhuma proposta registrada ainda: o bot só propõe quando surge sinal novo acima do gate.' : 'Nenhuma proposta: a execução demo está desligada neste servidor (DEMO_BOT=0).'}</p>
@@ -137,6 +137,7 @@ export function ProposalsCard({ proposals, bot }) {
           {p.outcome && <em className={`outcome o-${p.outcome}`}>{{ opened: 'ordem aberta na demo', 'dry-run': 'só simulada (dry-run)', failed: 'envio falhou na corretora', pending: 'aguardando envio' }[p.outcome]}</em>}
           <small>{new Date(p.ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small></div>
         {p.reason && <p>{p.reason}</p>}
+        {p.timeMachine && !p.reason && <p className="proposal-tm">⏳ Máquina do Tempo: {p.timeMachine.text}</p>}
         {p.checks.length > 0 && <div className="proposal-checks">{p.checks.map(c => <span key={c.label} className={c.ok ? 'ok' : 'no'} title={c.detail}>{c.ok ? '✓' : '✗'} {c.label}</span>)}</div>}
       </li>)}</ul>}
   </section>;

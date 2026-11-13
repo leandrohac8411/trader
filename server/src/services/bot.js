@@ -10,6 +10,7 @@ import * as demo from "./bybit-demo.js";
 import { computeLadder } from "./game.js";
 import { readPromotion } from "./school.js";
 import { reviewProposal, proposalSummary } from "./approval.js";
+import { evaluateTrade, seedFrom } from "./timemachine.js";
 
 const DATA_DIR = new URL("../../data/", import.meta.url);
 const STATE_FILE = new URL("bot-state.json", DATA_DIR);
@@ -30,6 +31,8 @@ export const CFG = {
   ladder: process.env.BOT_LADDER === "1",
   // Escola de traders: usa os parâmetros do aluno promovido (só com BOT_SCHOOL_PROMOTE=1).
   schoolPromote: process.env.BOT_SCHOOL_PROMOTE === "1",
+  // Máquina do Tempo antes de cada entrada (timemachine.js). Desligue com BOT_TIMEMACHINE=0.
+  timeMachine: process.env.BOT_TIMEMACHINE !== "0",
   minProb: Number(process.env.BOT_MIN_PROB || 85),
   reentryCooldown: Number(process.env.BOT_REENTRY_COOLDOWN || 10),
   dailyLossLimitPct: Number(process.env.BOT_DAILY_LOSS_LIMIT_PCT || 4),
@@ -76,6 +79,23 @@ export function closedCandles(candles, tf, now = Date.now()) {
  * A entrada é a mercado, ao preço de AGORA, não ao fechamento da vela.
  * Só entra se o preço atual ainda estiver entre o stop e o alvo (do lado certo).
  */
+/** Busca até 1000 velas fechadas e roda a Máquina do Tempo. Falha de dados não barra a entrada. */
+async function runTimeMachine({ symbol, tf, dir, entry, stop, tp, params }) {
+  try {
+    const candles = closedCandles(await getKlines({ symbol, interval: tf, limit: 1000 }), tf);
+    let htfCandles = null;
+    try {
+      htfCandles = closedCandles(await getKlines({ symbol, interval: higherTF(tf), limit: 1000 }), higherTF(tf));
+    } catch {
+      /* período maior opcional */
+    }
+    const seed = seedFrom(`${symbol}|${tf}|${candles.at(-1)?.ts}`);
+    return evaluateTrade({ candles, htfCandles, dir, entry, stop, tp, params, seed }).verdict;
+  } catch (e) {
+    return { ok: true, available: false, text: `indisponível agora (${String(e.message).slice(0, 60)}), não barra` };
+  }
+}
+
 export function entryStillValid({ dir, live, stop, tp }) {
   if (![live, stop, tp].every(Number.isFinite)) return false;
   return dir === "LONG" ? live > stop && live < tp : dir === "SHORT" ? live < stop && live > tp : false;
@@ -453,14 +473,25 @@ export async function tickOnce() {
               symbol, tf, dir: signal, entry: a.price, stop: a.levels.stop, tp: a.levels.tp1,
               probability: a.probability, gate: stratParams.minProbEntry ?? CFG.minProb, riskPct, equity, sizing: sz,
             };
-            const decision = reviewProposal({ proposal, cfg: CFG, openCount, symbolBusy: !!posBySymbol[symbol] });
+            let decision = reviewProposal({ proposal, cfg: CFG, openCount, symbolBusy: !!posBySymbol[symbol] });
+            // Passou nos limites? Só então roda a Máquina do Tempo (uma vez por vela fechada).
+            if (decision.approved && CFG.timeMachine) {
+              const candleTs = candles.at(-1)?.ts;
+              if (ks.tm?.candleTs !== candleTs) {
+                ks.tm = { candleTs, verdict: await runTimeMachine({ symbol, tf, dir: signal, entry: a.price, stop: a.levels.stop, tp: a.levels.tp1, params: stratParams }) };
+              }
+              proposal.timeMachine = ks.tm.verdict;
+              decision = reviewProposal({ proposal, cfg: CFG, openCount, symbolBusy: !!posBySymbol[symbol] });
+            }
 
             if (!decision.approved) {
               log.push(`${key}: barrada pelo risco (${decision.reason})`);
               // registra só quando o motivo muda (evita repetir a cada tick)
-              if (ks.lastBlockReason !== decision.reason) {
+              // os números da Máquina do Tempo mudam a cada tick: registra uma vez por motivo
+              const blockKey = decision.failedId === "timemachine" ? "timemachine" : decision.reason;
+              if (ks.lastBlockReason !== blockKey) {
                 appendEvent({ type: "blocked", by: "risk", reason: decision.reason, checks: decision.checks, ...proposalSummary(proposal) });
-                ks.lastBlockReason = decision.reason;
+                ks.lastBlockReason = blockKey;
               }
             } else if (CFG.dryRun) {
               appendEvent({ type: "approved", by: "risk", checks: decision.checks, ...proposalSummary(proposal) });

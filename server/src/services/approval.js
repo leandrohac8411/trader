@@ -46,8 +46,11 @@ export function reviewProposal({ proposal: p, cfg, openCount = 0, symbolBusy = f
 
   add("symbol", "Sem posição no mesmo ativo", !symbolBusy, symbolBusy ? `já há posição em ${p.symbol}` : "livre");
 
+  // Máquina do Tempo (timemachine.js): só entra na conta quando o bot a rodou para esta proposta.
+  if (p.timeMachine) add("timemachine", "Máquina do Tempo não prevê perda", p.timeMachine.ok, p.timeMachine.text);
+
   const failed = checks.find((c) => !c.ok);
-  return { approved: !failed, reason: failed ? `${failed.label}: ${failed.detail}` : null, checks };
+  return { approved: !failed, reason: failed ? `${failed.label}: ${failed.detail}` : null, failedId: failed?.id ?? null, checks };
 }
 
 /** Resumo enxuto de uma proposta para log/eventos (sem dados da conta além do necessário). */
@@ -57,5 +60,6 @@ export function proposalSummary(p) {
     probability: p.probability, riskPct: p.riskPct,
     qty: p.sizing?.qty ?? null, notional: p.sizing?.notional != null ? Math.round(p.sizing.notional) : null,
     riskUsd: p.sizing?.riskUsd != null ? Number(p.sizing.riskUsd.toFixed(2)) : null,
+    timeMachine: p.timeMachine?.available ? { ok: p.timeMachine.ok, text: p.timeMachine.text } : null,
   };
 }

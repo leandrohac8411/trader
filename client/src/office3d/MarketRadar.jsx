@@ -12,7 +12,7 @@ export default function MarketRadar({monitor,connected,onInterval,onSelect,notif
   const symbols=monitor?.symbols||['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
   async function change(e){setError('');try{await onInterval(e.target.value);}catch(err){setError(err.message);}}
   return <section className="market-radar" aria-label="Monitoramento automático de sinais">
-    <div className="radar-heading"><div><i className={connected&&monitor?.enabled?'radar-live':''}/><h2>Alice está de olho no mercado</h2><span>MONITORAMENTO AUTOMÁTICO</span></div>
+    <div className="radar-heading"><div><i className={connected&&monitor?.enabled?'radar-live':''}/><h2>Alice está de olho no mercado</h2><span><span className="caps">Monitoramento automático</span></span></div>
       <div className="radar-controls"><label>Período <select aria-label="Período do monitoramento automático" value={monitor?.interval||'1'} disabled={!connected} onChange={change}><option value="1">1 minuto</option><option value="5">5 minutos</option><option value="15">15 minutos</option><option value="60">1 hora</option><option value="240">4 horas</option></select></label>
         <button onClick={onNotifications} disabled={notifications==='unsupported'}>{notifications==='on'?'Avisos ativados':notifications==='denied'?'Avisos bloqueados':'Ativar avisos'}</button></div>
     </div>

@@ -4,7 +4,6 @@ import useOffice from './useOffice.js';
 import MarketView from './MarketView.jsx';
 import AgentWorkspace from './AgentWorkspace.jsx';
 import './office.css';
-import './office-v2.css';
 import { CHARACTER_ATLAS, CHARACTER_CELLS } from './characters.js';
 import { CAMERAS } from './createOfficeScene.js';
 import { Ficha, GoalsStrip, SchoolBoard, ManagerCard, ProposalsCard } from './GameUI.jsx';
@@ -57,7 +56,7 @@ function MoodMeter({mood}) {
   if(!mood)return null;
   const streak=mood.streak>0?`${mood.streak}V seguidas`:mood.streak<0?`${-mood.streak}D seguidas`:'sem sequência';
   return <div className={`mood-meter mood-${mood.mood}`} aria-label={`Humor do Lucas: ${mood.label}`}>
-    <div className="mood-title"><span><span className="caps">Humor do Lucas</span></span><small>{streak}</small></div>
+    <div className="mood-title"><span>HUMOR DO LUCAS</span><small>{streak}</small></div>
     <div className="mood-scale">{MOODS.map(([id,label])=><span key={id} className={mood.mood===id?'is-active':''}>{label}</span>)}</div>
     <p>{mood.reason}.{mood.cooldown?` Pausa no lounge: ${mood.cooldownReason}.`:''} <em>Leitura dos registros locais; não altera o bot.</em></p>
   </div>;
@@ -95,9 +94,6 @@ export default function Office({onDashboard}) {
   const [focused,setFocused]=useState(null);
   const [cam,setCam]=useState(null);
   const [view,setViewState]=useState(viewFromHash);
-  // Visual: v1 (original) ou v2 (nova cara). ?ui=1/2 na URL escolhe; a escolha fica salva neste navegador.
-  const [ui,setUiState]=useState(()=>{const q=new URLSearchParams(window.location.search).get('ui');if(q==='1'||q==='2')return q;try{return localStorage.getItem('office-ui')||'1';}catch{return '1';}});
-  function setUi(v){setUiState(v);try{localStorage.setItem('office-ui',v);}catch{/* sem armazenamento */}}
   useEffect(()=>{const sync=()=>setViewState(viewFromHash());window.addEventListener('hashchange',sync);return()=>window.removeEventListener('hashchange',sync);},[]);
   function setView(id){const v=VIEWS.find(x=>x.id===id);setViewState(id);if(v&&window.location.hash!==v.hash)history.replaceState(null,'',v.hash);window.scrollTo({top:0,behavior:'instant'});}
   const current=VIEWS.find(v=>v.id===view)||VIEWS[0];
@@ -130,7 +126,7 @@ export default function Office({onDashboard}) {
     catch(e){setMessages(m=>({...m,[id]:[...(m[id]||[]),{role:'error',text:e.message}]}));}
     finally{setChatting(false);}
   }
-  return <div className={`office-app ${ui==='2'?'ui-v2':''} ${reduced?'reduce-motion':''}`}>
+  return <div className={`office-app ${reduced?'reduce-motion':''}`}>
     <aside className="office-rail">
       <a className="office-logo" href="#office" onClick={showOffice} aria-label="Escritório Crypto Trading"><span>c</span><i/></a>
       <nav className="rail-nav" aria-label="Seções">{VIEWS.map(v=><button key={v.id} className={view===v.id&&!focused?'rail-active':''} aria-current={view===v.id?'page':undefined}
@@ -141,12 +137,12 @@ export default function Office({onDashboard}) {
     <div className="office-workspace">
       <header className="office-header"><div className="office-wordmark">CRYPTO<span>TRADING CO.</span></div><div className="header-divider"/>
         <div className="office-breadcrumb">Workspace <span>/</span> <strong>{focused?agent.name:current.label}</strong></div>
-        <div className="header-right"><div className="ui-switch" role="group" aria-label="Versão do visual">{['1','2'].map(v=><button key={v} aria-pressed={ui===v} onClick={()=>setUi(v)}><span className="ui-word">Visual </span>{v}</button>)}</div><span className="demo-badge"><Icon name="shield" size={14}/> Bybit Demo</span><button className="classic-button" onClick={onDashboard}>Dashboard clássico <Icon name="arrow" size={16}/></button></div>
+        <div className="header-right"><span className="demo-badge"><Icon name="shield" size={14}/> Bybit Demo</span><button className="classic-button" onClick={onDashboard}>Dashboard clássico <Icon name="arrow" size={16}/></button></div>
       </header>
       <main className="office-main">
         <nav className="view-tabs" role="tablist" aria-label="Seções do escritório">{VIEWS.map(v=><button key={v.id} role="tab" aria-selected={view===v.id&&!focused} className={view===v.id&&!focused?'is-active':''}
           onClick={()=>{setFocused(null);setView(v.id);}}><Icon name={v.icon} size={15}/>{v.label}</button>)}</nav>
-        <div className="office-title-row"><div><div className="office-eyebrow"><span className="caps">{focused?'Acompanhando um agente':'Seu centro de operações'}</span></div><h1>{focused?`${agent.name} · ${agent.role}`:current.title}<span>.</span></h1><p>{focused?'A estação, os dados e a atividade deste agente.':current.sub}</p></div>
+        <div className="office-title-row"><div><div className="office-eyebrow">{focused?'ACOMPANHANDO UM AGENTE':'SEU CENTRO DE OPERAÇÕES'}</div><h1>{focused?`${agent.name} · ${agent.role}`:current.title}<span>.</span></h1><p>{focused?'A estação, os dados e a atividade deste agente.':current.sub}</p></div>
           <div className={`connection-pill ${connected?'is-connected':''}`} role="status"><i/>{connected?'Conectado ao servidor':connection==='connecting'?'Conectando…':'Reconectando…'}<span>{snapshot?time(snapshot.updatedAt):'—'}</span></div>
         </div>
         {connected&&snapshot?.scheduler?.stale&&<div className="office-warning office-warning-bot" role="alert"><span><b>Bot parado:</b> {snapshot.scheduler.lastTickAt?`o agendador não chama o bot desde ${date(snapshot.scheduler.lastTickAt)}`:'o agendador ainda não chamou o bot nenhuma vez'}. Sem ele não há entradas nem saídas registradas. O radar atualiza enquanto esta página estiver aberta. Confira a tarefa no cron-job.org.</span></div>}
@@ -173,7 +169,7 @@ export default function Office({onDashboard}) {
             <section className="team-strip" id="office-team" aria-label="Sua equipe">{agents.map(a=><button key={a.id} onClick={()=>select(a.id)} aria-pressed={selected===a.id} className={`team-member ${selected===a.id?'is-selected':''}`} style={{'--agent-color':a.color}}><Portrait agent={a}/><span><strong>{a.name}</strong><small>{a.role}</small></span><i className={a.state==='working'?'working-dot':''}/></button>)}</section>
           </section>}
           <aside className="agent-panel" style={{'--agent-color':agent.color}} aria-label={`Painel de ${agent.name}`}>
-            <div className="agent-panel-eyebrow"><b className="caps">Sua equipe</b><span className="caps">Funcionário selecionado</span></div>
+            <div className="agent-panel-eyebrow">SUA EQUIPE <span>FUNCIONÁRIO SELECIONADO</span></div>
             <div className="agent-identity"><div className="portrait-frame"><Portrait agent={agent} large/></div><div><span className="agent-state"><i/>{!connected?'Sem conexão':selected==='trader'&&snapshot?.crew?.trader?.cooldown?'Pausa no lounge':focused&&selected==='trader'?'Acompanhando velas':busy?'Analisando mercado':agent.state==='monitoring'?'Monitorando automaticamente':agent.state==='error'?'Consulta falhou':'Disponível'}</span><h2>{agent.name}</h2><p>{agent.role}</p></div></div>
             <p className="agent-description">{agent.task}</p>
             <div className="panel-ficha"><Ficha id={agent.id} name={agent.name} color={agent.color} snapshot={snapshot} compact/></div>
@@ -181,7 +177,7 @@ export default function Office({onDashboard}) {
             <button className="agent-locate" onClick={locate}>Ver {agent.name} no escritório <Icon name="arrow" size={13}/></button>
             <div className="agent-tabs" role="tablist" aria-label="Informações do agente"><button role="tab" aria-selected={tab==='activity'} onClick={()=>setTab('activity')}>Atividade</button><button role="tab" aria-selected={tab==='chat'} onClick={()=>setTab('chat')}>Conversar <Icon name="globe" size={12}/></button></div>
             {tab==='activity'?<div className="agent-activity" role="tabpanel">
-              <div className="task-heading"><span className="caps">{selected==='analyst'&&snapshot?.monitor?.enabled?'Acompanhamento ao vivo':'Tarefa do agente'}</span><small>{busy?'Consulta em andamento':selected==='analyst'&&snapshot?.monitor?.lastScan?`Atualizado ${time(snapshot.monitor.lastScan)}`:agent.lastRun?`Consultado ${time(agent.lastRun)}`:'Ainda não consultado'}</small></div>
+              <div className="task-heading"><span>{selected==='analyst'&&snapshot?.monitor?.enabled?'ACOMPANHAMENTO AO VIVO':'TAREFA DO AGENTE'}</span><small>{busy?'Consulta em andamento':selected==='analyst'&&snapshot?.monitor?.lastScan?`Atualizado ${time(snapshot.monitor.lastScan)}`:agent.lastRun?`Consultado ${time(agent.lastRun)}`:'Ainda não consultado'}</small></div>
               {selected==='analyst'&&snapshot?.monitor?.enabled?<details className="manual-analysis"><summary>Fazer uma consulta extra (opcional)</summary><MarketInputs symbol={symbol} onSymbol={setSymbol} interval={interval} onInterval={setIntervalValue}/><button className="agent-action" disabled={!connected||busy||running!==null} onClick={perform}>Consultar agora <Icon name="arrow" size={15}/></button></details>:<>
                 {['analyst','scientist'].includes(selected)&&<MarketInputs symbol={symbol} onSymbol={setSymbol} interval={interval} onInterval={setIntervalValue}/>}
                 <button className="agent-action" disabled={!connected||busy||running!==null} onClick={perform}><Icon name={busy?'refresh':'play'} size={15}/>{busy?'Consultando…':agent.action}<Icon name="arrow" size={15}/></button>
@@ -190,7 +186,7 @@ export default function Office({onDashboard}) {
               {selected==='analyst'&&snapshot?.monitor?.enabled&&<p className="result-note">Alice acompanha os cinco ativos e atualiza os sinais automaticamente. Você não precisa iniciar consultas.</p>}
               {selected==='analyst'&&analysisView==='manual'&&<button className="agent-locate" style={{margin:'14px 0'}} onClick={()=>setAnalysisView('live')}>Voltar ao radar automático <Icon name="arrow" size={13}/></button>}
               {selected==='analyst'&&analysisView==='live'&&!liveResult?<p className="result-note">{snapshot?.monitor?.running?'Alice está consultando os cinco mercados. Os sinais aparecerão aqui.':'Aguardando uma leitura válida do mercado. O monitor tenta novamente automaticamente.'}</p>:<Result result={selected==='analyst'&&analysisView==='live'?liveResult:agent.result}/>}
-              <div className="agent-recent"><div className="task-heading"><span className="caps">Últimos registros</span><small>{agentEvents.length}</small></div>{agentEvents.length?agentEvents.slice(0,3).map(e=><div className="agent-event" key={e.id}><i/><p>{e.message}<small>{date(e.ts)}</small></p></div>):<p className="quiet-copy">As tarefas e consultas deste agente aparecerão aqui.</p>}</div>
+              <div className="agent-recent"><div className="task-heading"><span>ÚLTIMOS REGISTROS</span><small>{agentEvents.length}</small></div>{agentEvents.length?agentEvents.slice(0,3).map(e=><div className="agent-event" key={e.id}><i/><p>{e.message}<small>{date(e.ts)}</small></p></div>):<p className="quiet-copy">As tarefas e consultas deste agente aparecerão aqui.</p>}</div>
             </div>:<div className="agent-chat" role="tabpanel"><p className="chat-context">Converse com {agent.name} sobre os dados consultados e o histórico disponível. A conversa não executa operações.</p>
               {!snapshot?.aiEnabled&&<div className="chat-unavailable">Groq não configurado. As tarefas dos agentes continuam disponíveis na aba Atividade.</div>}
               <div className="chat-messages" ref={chatScroll} aria-live="polite">{visibleMessages.length?visibleMessages.map((m,i)=><div key={i} className={`chat-message chat-${m.role}`}><span>{m.role==='user'?'Você':agent.name}</span><p>{m.text}</p></div>):<div className="chat-starters"><span>Comece uma conversa</span>{['O que os dados mostram agora?','Quais pontos precisam de atenção?'].map(p=><button key={p} onClick={()=>setPrompt(p)}>{p}<Icon name="arrow" size={14}/></button>)}</div>}{chatting&&<div className="chat-thinking">Consultando a IA…</div>}</div>
@@ -199,8 +195,8 @@ export default function Office({onDashboard}) {
             <div className="agent-panel-footer"><Icon name="shield" size={13}/> Somente demo. Nenhuma ordem por esta tela.</div>
           </aside>
         </div>}
-        {!focused&&view==='office'&&<section className={`office-events ${eventsExpanded?'events-expanded':''}`} aria-label="Registro de atividade"><div className="events-title"><div><Icon name="pulse" size={17}/><h2>O que acontece no escritório</h2><span className="caps">Registros reais</span></div><button onClick={()=>setEventsExpanded(v=>!v)}>{eventsExpanded?'Recolher':'Ver histórico'} <Icon name="arrow" size={15}/></button></div>
-          <div className="event-table"><div className="event-table-head"><span className="caps">Horário</span><span className="caps">Origem</span><span className="caps">Atividade</span><span className="caps">Registro</span></div>{events.length?events.slice(0,eventsExpanded?40:4).map(e=>{const a=agents.find(a=>a.id===e.agentId);return <button className="event-row" key={e.id} onClick={()=>select(e.agentId)}><time>{date(e.ts)}</time><span className="event-origin"><i style={{background:a?.color}}/>{a?.name||'Sistema'}</span><span>{e.message}</span><small className={e.source==='bot'?'event-historical':''}>{e.source==='bot'?'Histórico do bot':'Consulta do escritório'}</small></button>;}):<div className="events-empty">Selecione um agente e execute uma consulta para começar.</div>}</div>
+        {!focused&&view==='office'&&<section className={`office-events ${eventsExpanded?'events-expanded':''}`} aria-label="Registro de atividade"><div className="events-title"><div><Icon name="pulse" size={17}/><h2>O que acontece no escritório</h2><span>REGISTROS REAIS</span></div><button onClick={()=>setEventsExpanded(v=>!v)}>{eventsExpanded?'Recolher':'Ver histórico'} <Icon name="arrow" size={15}/></button></div>
+          <div className="event-table"><div className="event-table-head"><span>HORÁRIO</span><span>ORIGEM</span><span>ATIVIDADE</span><span>REGISTRO</span></div>{events.length?events.slice(0,eventsExpanded?40:4).map(e=>{const a=agents.find(a=>a.id===e.agentId);return <button className="event-row" key={e.id} onClick={()=>select(e.agentId)}><time>{date(e.ts)}</time><span className="event-origin"><i style={{background:a?.color}}/>{a?.name||'Sistema'}</span><span>{e.message}</span><small className={e.source==='bot'?'event-historical':''}>{e.source==='bot'?'Histórico do bot':'Consulta do escritório'}</small></button>;}):<div className="events-empty">Selecione um agente e execute uma consulta para começar.</div>}</div>
         </section>}
         <footer className="office-footer"><span>CRYPTO TRADING CO. <i/> Seu laboratório de mercado.</span><span>Estados reais · Pesquisa simulada · Sem ordens nesta tela</span></footer>
       </main>

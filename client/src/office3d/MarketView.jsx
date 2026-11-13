@@ -22,7 +22,7 @@ export default function MarketView({ snapshot, connected, onInterval, notificati
         <div className="market-symbols" role="tablist" aria-label="Período">{INTERVALS.map(([v, l]) => <button key={v} role="tab" aria-selected={interval === v} className={interval === v ? 'is-active' : ''} onClick={() => { setTf(v); setSignal(null); }}>{l}</button>)}</div>
       </div>
       <TraderChart symbol={symbol} interval={interval} connected={connected} onSignal={setSignal} />
-      <div className="market-reading"><small><span className="caps">Leitura da estratégia neste gráfico</span></small><strong>{reading}</strong>
+      <div className="market-reading"><small>LEITURA DA ESTRATÉGIA NESTE GRÁFICO</small><strong>{reading}</strong>
         <span>{fresh ? `Consenso ${signal.consensus} · score ${signal.probability}/100 · o bot opera em 1h e 4h` : `${symbol.replace('USDT', '')} · ${INTERVALS.find(i => i[0] === interval)?.[1]}`}</span></div>
     </section>
   </>;

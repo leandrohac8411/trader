@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createKit, makeCanvas, canvasPanel, textSprite, roundRect, rng } from './voxel.js';
 import { LOOKS, buildCharacter, pose, buildDog, createDogWalker } from './people.js';
 import { buildSchool } from './school3d.js';
+import { routeTo, canWalk, facts, reportLines, gossipLines, COOLER } from './errands.js';
 
 // Person position on the floor; ry rotates the station so that ry=0 faces -Z (towards the back wall).
 const STATIONS = [
@@ -35,7 +36,7 @@ const TOUR_MS = 7000;
 const UP = new THREE.Vector3(0, 1, 0);
 // Lucas's walk from his desk to the lounge sofa (aisles only), ending seated facing the TV.
 const LOUNGE_ROUTE = [[3.3, -2.4], [5.4, 0.9], [5.0, 3.1], [5.0, 7.0], [6.4, 7.1], [7.2, 7.75]]
-  .map(([x, z]) => ({ pos: new THREE.Vector3(x, 0, z), yaw: Math.PI }));
+  .map(([x, z], i, all) => ({ pos: new THREE.Vector3(x, 0, z), yaw: Math.PI, ...(i === all.length - 1 ? { pose: 'gaming' } : {}) }));
 const MOOD_COLOR = { perigo: '#ef4444', alerta: '#f59e0b', normal: '#2dd4bf', confiante: '#4ade80' };
 
 const STAGE_COLOR ={ go: '#4ade80', ready: '#fb923c', watch: '#fbbf24', none: '#7b8a96' };
@@ -127,9 +128,9 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(seat.x, 0.04, seat.z);
     scene.add(ring);
-    // Route nodes: 0 = own chair; trader also has the walk to the lounge sofa.
-    const route = [{ pos: seat, yaw: seatYaw }, ...(s.id === 'trader' ? LOUNGE_ROUTE : [])];
-    people.push({ s, g, character, screens, zzz, bubble, ring, state: 'idle', route, node: 0, goal: 0 });
+    // Route nodes: 0 = own chair; errands (lounge, Arthur's office, water cooler) append the rest.
+    const route = [{ pos: seat, yaw: seatYaw }];
+    people.push({ s, g, character, screens, zzz, bubble, ring, state: 'idle', route, node: 0, goal: 0, errand: null });
   }
 
   // ── Max, the office dog ─────────────────────────────────────────────────
@@ -151,12 +152,18 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
 
   // Lounge TV shows a little game while someone is playing.
   const tv = canvasPanel(scene, 2.6, 1.4, [7.6, 1.4, 4.28], makeCanvas(320, 172));
+  // Water cooler: where the team stops for a chat.
+  const [cx, cz] = COOLER.at;
+  box(scene, [0.55, 0.95, 0.55], [cx, 0.48, cz], '#e9eef2');
+  box(scene, [0.42, 0.55, 0.42], [cx, 1.25, cz], '#7cc3ea', { transparent: true, opacity: 0.75 });
+  box(scene, [0.12, 0.08, 0.1], [cx - 0.3, 0.8, cz], '#3b82c4');
   drawTv(tv, 0, false);
 
   // ── Data → screens and reactions ──────────────────────────────────────
   let data = null, selected = 'analyst', motion = true;
   const seen = new Set();
-  let primed = false, lastMood = null, lastCooldown = false, lastLevel = null, lastGoal = false;
+  let primed = false, lastMood = null, lastCooldown = false, lastLevel = null, lastGoal = false, lastFull = false;
+  const pending = []; // errands asked by real events (trade closed, school graded)
   const byId = id => people.find(p => p.s.id === id);
   const say = (id, text, ms = 9000) => (id === 'dog' ? dogBubble : byId(id)?.bubble)?.show(text, ms);
   const trader = () => data?.crew?.trader;
@@ -164,12 +171,11 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
     const agent = data?.agents?.find(a => a.id === id);
     if (agent?.state === 'working') return 'working';
     if (agent?.state === 'error') return 'error';
+    const f = facts(data);
+    if (id === 'trader') return f.signals && !f.deskFull ? 'monitoring' : 'sleeping'; // sem vaga ou sem sinal: nada a fazer
+    if (id === 'analyst' && f.deskFull) return 'idle'; // mesa cheia: sinal novo não entra
     if (agent?.state === 'monitoring') return 'monitoring';
     if (id === 'risk' && trader()?.cooldown) return 'monitoring';
-    if (id === 'trader') {
-      const live = (data?.monitor?.items || []).some(i => !i.stale && !i.error && ['LONG', 'SHORT'].includes(i.signal));
-      return live ? 'monitoring' : 'sleeping';
-    }
     return 'idle';
   }
   // Speech bubbles come only from things that actually happened (alerts, bot log, tasks, mood changes).
@@ -179,7 +185,13 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
     for (const e of data?.events || []) if (!seen.has(e.id)) { seen.add(e.id); fresh.push({ kind: 'event', ...e }); }
     const mood = trader();
     const ladder = data?.game?.ladder;
-    if (!primed) { primed = true; lastMood = mood?.mood; lastCooldown = !!mood?.cooldown; lastLevel = ladder?.level ?? null; lastGoal = !!data?.game?.goal?.reached; return; }
+    const f = facts(data);
+    if (!primed) { primed = true; lastMood = mood?.mood; lastCooldown = !!mood?.cooldown; lastLevel = ladder?.level ?? null; lastGoal = !!data?.game?.goal?.reached; lastFull = f.deskFull; return; }
+    if (f.deskFull !== lastFull) {
+      lastFull = f.deskFull;
+      if (f.deskFull) { say('trader', `${f.open}/${f.max} abertas. Cochilo até abrir vaga 😴`); say('analyst', 'Mesa cheia: sinal novo espera vaga.'); }
+      else { say('trader', 'Abriu vaga! Voltei.'); say('analyst', 'Vaga livre. De volta ao radar.'); }
+    }
     if (ladder && lastLevel != null && ladder.level !== lastLevel) {
       if (ladder.level > lastLevel) { say('ceo', `Subimos: risco ${ladder.riskPct}%!`); say('risk', 'Aprovado. Teto continua 2×.'); }
       else say('risk', `Desce um degrau: risco ${ladder.riskPct}%.`);
@@ -194,7 +206,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
       if (item.kind !== 'event') continue;
       if (item.source === 'bot') {
         if (item.type === 'opened') say('trader', `Entrei em ${sym} (demo)`);
-        if (item.type === 'closed') say('trader', `Fechei ${sym}. Registrado.`);
+        if (item.type === 'closed') { say('trader', `Fechei ${sym}. Registrado.`); pending.push({ id: 'trader', kind: 'closed', sym }); }
         if (item.type === 'would_open') say('trader', `Entraria em ${sym} (dry-run)`);
         if (item.type === 'error') say('auditor', 'Erro no log do bot!');
         if (item.type === 'approved') say('risk', `Aprovado: ${sym} ✓`);
@@ -203,6 +215,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
       else if (item.type === 'task.completed') say(item.agentId, 'Pronto!', 4000);
       else if (item.type === 'task.failed') say(item.agentId, 'Ih, falhou…', 5000);
       else if (item.type === 'manager.review') say('ceo', 'Chegou o parecer do gerente.');
+      else if (item.type === 'school.graded') pending.push({ id: 'scientist', kind: 'report' });
       else if (item.type === 'school.promoted') say('scientist', 'Temos um formando! 🎓');
       else if (item.type === 'school.demoted') say('scientist', 'Promoção suspensa.');
       else if (item.type === 'school.failed') say('scientist', 'A avaliação falhou.', 5000);
@@ -229,16 +242,18 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
     const mood = trader();
     for (const p of people) {
       p.state = agentState(p.s.id);
-      if (p.s.id === 'trader') p.goal = mood?.cooldown ? p.route.length - 1 : 0;
       p.screens.forEach((screen, i) => drawMonitor(screen, monitorContent(p.s, i, data), p.s.color));
     }
     walkDog.guard(mood?.cooldown ? [3.3, 0, -2.9] : null);
+    // Lucas goes to the lounge during the cooldown and comes back when it ends.
+    const lucas = byId('trader');
+    lucas.wantLounge = !!mood?.cooldown;
+    if (lucas.errand && (lucas.errand.kind === 'lounge') !== lucas.wantLounge) sendHome(lucas);
     drawWall(wall, data);
     drawRisk(riskPanel, data);
     drawBoard(board, data);
     school.update(data?.school);
   }
-  drawAll();
 
   // ── Interaction ─────────────────────────────────────────────────────────
   const raycaster = new THREE.Raycaster();
@@ -299,6 +314,98 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
   });
   setCamera('cam02', { instant: true });
 
+  // ── Errands: report to Arthur, chat by the cooler, Lucas's lounge break ──
+  const timers = [];
+  let nextIdleAt = performance.now() + 20_000, lastErrandCheck = 0;
+  const later = (ms, fn) => timers.push({ at: performance.now() + ms, fn });
+  const atDesk = p => !p.errand && p.node === 0 && p.goal === 0;
+  // Free for a walk: at the desk with nothing running (Arthur stays in his office, Lucas only walks for a reason).
+  const isFree = p => atDesk(p) && canWalk(p.s.id) && p.s.id !== 'trader' && p.state === 'idle';
+  function sendOn(p, kind, nodes, { hold = 9, lines = [] } = {}) {
+    if (!nodes || !atDesk(p)) return false;
+    p.route = [p.route[0], ...nodes];
+    p.goal = p.route.length - 1;
+    p.errand = { kind, hold, lines, arrived: false, returning: false, until: Infinity, partner: null };
+    if (!motion) p.node = p.goal;
+    return true;
+  }
+  function sendHome(p) {
+    if (!p.errand || p.errand.returning) return;
+    p.errand.returning = true;
+    p.goal = 0;
+  }
+  const bossBusy = () => people.some(p => p.errand && ['report', 'closed'].includes(p.errand.kind));
+  const coolerBusy = () => people.some(p => p.errand?.kind === 'cooler');
+  function startReport(p, lines) {
+    if (!lines || bossBusy()) return false;
+    return sendOn(p, 'report', routeTo(p.s.id, 'boss'), { hold: 9, lines: [[p.s.id, lines[0]], ['ceo', lines[1]]] });
+  }
+  function startGossip(f) {
+    if (coolerBusy()) return false;
+    const free = people.filter(isFree).sort(() => Math.random() - 0.5).slice(0, 2);
+    if (free.length < 2) return false;
+    const [a, b] = free;
+    sendOn(a, 'cooler', routeTo(a.s.id, 'cooler', 0), { hold: 13, lines: gossipLines(f, a.s.id, b.s.id) });
+    sendOn(b, 'cooler', routeTo(b.s.id, 'cooler', 1), { hold: 13 });
+    a.errand.partner = b;
+    b.errand.partner = a;
+    return true;
+  }
+  // Lines start once everyone is in place (both chatters, or the visitor seated).
+  function begin(p, now) {
+    for (const q of [p, p.errand.partner].filter(Boolean)) q.errand.until = now + q.errand.hold * 1000;
+    p.errand.lines.forEach(([who, text], k) => later(k * 3200, () => say(who, text, 6000)));
+  }
+  function errandTick(now) {
+    for (let i = timers.length - 1; i >= 0; i--) if (now >= timers[i].at) timers.splice(i, 1)[0].fn();
+    for (const p of people) {
+      const e = p.errand;
+      if (!e) continue;
+      if (e.returning) {
+        if (p.node === 0 && p.goal === 0) { p.errand = null; p.route = [p.route[0]]; }
+        continue;
+      }
+      if (e.kind !== 'lounge' && e.kind !== 'closed' && ['working', 'error'].includes(p.state)) { sendHome(p); continue; }
+      if (!e.arrived && p.node === p.goal) {
+        e.arrived = true;
+        if (e.kind === 'lounge') continue; // stays until the cooldown ends
+        if (!e.partner) begin(p, now);
+        else if (e.partner.errand?.arrived) begin(e.lines.length ? p : e.partner, now);
+        continue;
+      }
+      if (e.arrived && e.kind !== 'lounge' && now > e.until) sendHome(p);
+    }
+    if (now - lastErrandCheck < 1000) return;
+    lastErrandCheck = now;
+    const f = facts(data);
+    const lucas = byId('trader');
+    if (lucas.wantLounge && atDesk(lucas)) sendOn(lucas, 'lounge', LOUNGE_ROUTE, { hold: Infinity });
+    // Event-driven first: Lucas reports a closed trade, Sofia reports the school.
+    for (let i = 0; i < pending.length; i++) {
+      const job = pending[i], p = byId(job.id);
+      let ok = false;
+      if (atDesk(p) && !bossBusy() && !(job.id === 'trader' && lucas.wantLounge)) {
+        if (job.kind === 'closed') {
+          const t = f.today;
+          const day = t ? `Hoje estamos ${t.netUsd >= 0 ? '+' : '−'}US$ ${Math.abs(Math.round(t.netUsd)).toLocaleString('pt-BR')}.` : 'Segue a regra.';
+          ok = sendOn(p, 'closed', routeTo('trader', 'boss'), { hold: 8, lines: [['trader', `Chefe, fechei ${job.sym}.`], ['ceo', `${day} Obrigado, Lucas.`]] });
+        } else ok = startReport(p, reportLines(job.id, f));
+      }
+      job.tries = (job.tries || 0) + 1;
+      if (ok || job.tries > 60) { pending.splice(i, 1); i--; }
+    }
+    // Now and then, someone free takes a walk.
+    if (motion && now > nextIdleAt) {
+      nextIdleAt = now + 25_000 + Math.random() * 30_000;
+      if (Math.random() < 0.5 || !startGossip(f)) {
+        const free = people.filter(p => isFree(p) && reportLines(p.s.id, f));
+        const who = free[Math.floor(Math.random() * free.length)];
+        if (who) startReport(who, reportLines(who.s.id, f));
+      }
+    }
+  }
+  drawAll();
+
   // ── Render loop ─────────────────────────────────────────────────────────
   let frame, disposed = false, lastFrame = 0, last = performance.now(), tvAt = 0;
   const headPos = new THREE.Vector3();
@@ -310,7 +417,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
       const spot = p.route[p.node];
       root.position.copy(spot.pos);
       root.rotation.y = spot.yaw;
-      return p.node === 0 ? p.state : 'gaming';
+      return p.node === 0 ? p.state : p.route[p.node].pose || 'idle';
     }
     const next = p.route[p.node + Math.sign(p.goal - p.node)];
     const to = next.pos.clone().sub(root.position);
@@ -333,6 +440,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
     const t = now / 1000;
 
     dogPos.copy(walkDog(dt, t, motion));
+    errandTick(now);
     let gaming = false;
     for (const p of people) {
       const state = moveAlongRoute(p, dt, motion);
@@ -391,7 +499,15 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
   return {
     cameras: CAMERAS,
     debug: () => ({ dog: dogPos.toArray().map(v => +v.toFixed(2)), cooldown: !!trader()?.cooldown,
-      trader: byId('trader').character.root.position.toArray().map(v => +v.toFixed(2)) }),
+      trader: byId('trader').character.root.position.toArray().map(v => +v.toFixed(2)),
+      errands: people.filter(p => p.errand).map(p => ({ id: p.s.id, kind: p.errand.kind, node: p.node, goal: p.goal, arrived: p.errand.arrived })),
+      states: Object.fromEntries(people.map(p => [p.s.id, p.state])) }),
+    // Dev only (window.__officeScene): start a walk now, to check the paths.
+    debugErrand(kind, id = 'risk', other = 'auditor') {
+      const p = byId(id), f = facts(data);
+      if (kind === 'cooler') { const q = byId(other); sendOn(p, 'cooler', routeTo(id, 'cooler', 0), { hold: 13, lines: gossipLines(f, id, other) }); sendOn(q, 'cooler', routeTo(other, 'cooler', 1), { hold: 13 }); p.errand.partner = q; q.errand.partner = p; }
+      else startReport(p, reportLines(id, f) || ['Teste.', 'Ok.']);
+    },
     update(next, id) { data = next; selected = id; drawAll(); },
     motion(value) { motion = value; },
     zoom(delta) {

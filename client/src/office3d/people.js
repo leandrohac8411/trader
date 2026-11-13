@@ -101,11 +101,11 @@ function addHair(kit, head, { hair, hairStyle }) {
   }
 }
 
-// state: 'working' | 'monitoring' | 'idle' | 'sleeping' | 'error' | 'walking' | 'gaming'
+// state: 'working' | 'monitoring' | 'idle' | 'sleeping' | 'error' | 'walking' | 'gaming' | 'chatting' | 'reporting'
 export function pose(c, state, t, motion) {
   const m = motion ? 1 : 0;
   const ph = c.phase;
-  const seated = state !== 'walking';
+  const seated = state !== 'walking' && state !== 'chatting';
   c.controller.visible = state === 'gaming';
   c.hips.position.y = seated ? HIP_SIT : HIP_STAND + Math.abs(Math.sin(t * 8)) * 0.04 * m;
   c.torso.rotation.set(0, 0, 0);
@@ -134,6 +134,16 @@ export function pose(c, state, t, motion) {
     c.torso.rotation.x = 0.08;
     c.head.rotation.y = state === 'monitoring' ? Math.sin(t * 0.7 + ph) * 0.35 * m : 0;
     c.head.rotation.x = 0.05;
+    return;
+  }
+  if (state === 'chatting' || state === 'reporting') {
+    // Talking with the hands: one arm gestures, the head nods along.
+    c.hips.position.y = state === 'chatting' ? HIP_STAND : HIP_SIT;
+    left.rotation.x = state === 'chatting' ? -0.15 : -0.65;
+    right.rotation.x = -0.95 + Math.sin(t * 3.2 + ph) * 0.35 * m;
+    right.rotation.z = -0.25;
+    c.head.rotation.x = Math.sin(t * 2.4 + ph) * 0.08 * m;
+    c.head.rotation.y = Math.sin(t * 0.9 + ph) * 0.15 * m;
     return;
   }
   if (state === 'gaming') {

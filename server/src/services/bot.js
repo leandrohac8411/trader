@@ -21,6 +21,23 @@ const EVENTS_FILE = process.env.BOT_EVENTS_FILE
   : new URL("bot-events.jsonl", DATA_DIR);
 const MAX_EVENTS = 2000; // corta o arquivo pra não crescer sem fim
 
+/**
+ * Perfis validados em docs/validacao-estrategia.md (carteira 3 anos, treino 2023–25, teste 2026).
+ *   v1: a configuração antiga (perdeu −12% em 3 anos).
+ *   v2: score ≥ 90, alvo 3R, SuperTrend 4 (melhor candidata em 1h+4h: +60%, queda máx. −21%).
+ */
+export const STRATEGY_PROFILES = {
+  v1: { minProb: 85, rr1: 1.5, stMult: 3 },
+  v2: { minProb: 90, rr1: 3, stMult: 4 },
+};
+
+export function profileParams(profile, env = process.env) {
+  if (profile === "custom") {
+    return { minProb: Number(env.BOT_MIN_PROB || 90), rr1: Number(env.BOT_RR1 || 3), stMult: Number(env.BOT_ST_MULT || 4) };
+  }
+  return { ...(STRATEGY_PROFILES[profile] || STRATEGY_PROFILES.v2) };
+}
+
 export const CFG = {
   enabled: process.env.DEMO_BOT === "1" && demo.demoConfigured(),
   symbols: (process.env.BOT_SYMBOLS || "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT")
@@ -33,7 +50,9 @@ export const CFG = {
   schoolPromote: process.env.BOT_SCHOOL_PROMOTE === "1",
   // Máquina do Tempo antes de cada entrada (timemachine.js). Desligue com BOT_TIMEMACHINE=0.
   timeMachine: process.env.BOT_TIMEMACHINE !== "0",
-  minProb: Number(process.env.BOT_MIN_PROB || 85),
+  // Perfil da estratégia (ver STRATEGY_PROFILES). "custom" usa BOT_MIN_PROB/BOT_RR1/BOT_ST_MULT.
+  profile: process.env.BOT_PROFILE || "v2",
+  ...profileParams(process.env.BOT_PROFILE || "v2"),
   reentryCooldown: Number(process.env.BOT_REENTRY_COOLDOWN || 10),
   dailyLossLimitPct: Number(process.env.BOT_DAILY_LOSS_LIMIT_PCT || 4),
   maxOpen: Number(process.env.BOT_MAX_OPEN || 3),
@@ -155,7 +174,7 @@ export function effectiveRiskPct({ trades = [], equityBase = 0, cfg = CFG } = {}
 
 // Parâmetros da estratégia: gate base, mais os do aluno promovido quando permitido.
 export function strategyParams({ cfg = CFG, promotion = null } = {}) {
-  const base = { minProbEntry: cfg.minProb };
+  const base = { minProbEntry: cfg.minProb, ...(cfg.rr1 ? { rr1: cfg.rr1 } : {}), ...(cfg.stMult ? { stMult: cfg.stMult } : {}) };
   if (!cfg.schoolPromote || !promotion?.params) return base;
   return { ...base, ...promotion.params };
 }
@@ -581,7 +600,7 @@ export function startBot() {
     return;
   }
   console.log(
-    `bot demo: LIGADO${CFG.dryRun ? " [DRY-RUN — não manda ordem]" : ""} — ${CFG.symbols.join(",")} × [${CFG.timeframes.join(",")}] · risco ${CFG.riskPct}% · gate ${CFG.minProb}% · notional máx ${(CFG.maxNotionalPct * 100).toFixed(0)}% da conta · máx ${CFG.maxOpen} abertas`
+    `bot demo: LIGADO${CFG.dryRun ? " [DRY-RUN — não manda ordem]" : ""} — ${CFG.symbols.join(",")} × [${CFG.timeframes.join(",")}] · risco ${CFG.riskPct}% · perfil ${CFG.profile} (gate ${CFG.minProb}%, alvo ${CFG.rr1}R, SuperTrend ${CFG.stMult}) · notional máx ${(CFG.maxNotionalPct * 100).toFixed(0)}% da conta · máx ${CFG.maxOpen} abertas`
   );
   const run = () =>
     tickOnce()

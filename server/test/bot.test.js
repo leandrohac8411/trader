@@ -153,6 +153,18 @@ test("strategyParams só usa o aluno promovido com BOT_SCHOOL_PROMOTE", async ()
   assert.deepEqual(strategyParams({ cfg: { minProb: 85, schoolPromote: true }, promotion }), { minProbEntry: 75, rr1: 2 });
 });
 
+test("perfil v2 é o padrão: score ≥ 90, alvo 3R, SuperTrend 4", async () => {
+  const { profileParams, strategyParams, CFG } = await import("../src/services/bot.js");
+  assert.deepEqual(profileParams("v2"), { minProb: 90, rr1: 3, stMult: 4 });
+  assert.deepEqual(profileParams("v1"), { minProb: 85, rr1: 1.5, stMult: 3 });
+  assert.deepEqual(profileParams("desconhecido"), { minProb: 90, rr1: 3, stMult: 4 });
+  // BOT_MIN_PROB antigo só vale no perfil custom
+  assert.deepEqual(profileParams("custom", { BOT_MIN_PROB: "88", BOT_RR1: "2" }), { minProb: 88, rr1: 2, stMult: 4 });
+  if (!process.env.BOT_PROFILE) assert.deepEqual(strategyParams({ cfg: { ...CFG, schoolPromote: false } }), { minProbEntry: 90, rr1: 3, stMult: 4 });
+  assert.deepEqual(strategyParams({ cfg: { minProb: 90, rr1: 3, stMult: 4, schoolPromote: true }, promotion: { params: { rr1: 2 } } }),
+    { minProbEntry: 90, rr1: 2, stMult: 4 });
+});
+
 test("isRecordedTrade descarta fechamentos não encontrados na corretora", async () => {
   const { isRecordedTrade } = await import("../src/services/bot.js");
   assert.equal(isRecordedTrade({ exit: null, reason: "unknown", netR: 0 }), false);

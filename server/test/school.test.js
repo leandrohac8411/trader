@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
-  STUDENTS, sanitizeParams, statsR, gradeStudent, studentStatus, rankSchool, createSchool, readPromotion,
+  STUDENTS, SCHOOL_VERSION, sanitizeParams, statsR, gradeStudent, studentStatus, rankSchool, createSchool, readPromotion,
 } from "../src/services/school.js";
 
 const T0 = 1_700_000_000_000;
@@ -101,6 +101,26 @@ test("createSchool grava papel só depois da abertura, sem duplicar, e persiste 
   } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });
 
+test("createSchool busca as velas do período de cada aluno (1h e 4h)", async () => {
+  const dataDir = tmpDir();
+  try {
+    const asked = [];
+    const school = createSchool({ dataDir, symbols: ["BTCUSDT"], now: () => T0,
+      loadInputs: async (symbol, interval) => { asked.push(interval); return { candles: candles() }; }, backtest: fakeBacktest,
+      students: [{ id: "base", name: "Bia", params: {} }, { id: "q", name: "Lia", interval: "240", params: { rr1: 2 } }] });
+    assert.equal(await school.run(), true);
+    assert.deepEqual(asked.sort(), ["240", "60"]);
+    const snap = school.snapshot();
+    assert.equal(snap.students.find((s) => s.id === "q").interval, "240");
+    assert.equal(snap.students.find((s) => s.id === "base").interval, "60");
+  } finally { rmSync(dataDir, { recursive: true, force: true }); }
+});
+
+test("STUDENTS: ids únicos e a turma base é o bot", () => {
+  assert.equal(new Set(STUDENTS.map((s) => s.id)).size, STUDENTS.length);
+  assert.deepEqual(STUDENTS.find((s) => s.id === "base").params, {});
+});
+
 test("readPromotion só devolve parâmetros saneados quando pronto", async () => {
   const dataDir = tmpDir();
   try {
@@ -109,7 +129,7 @@ test("readPromotion só devolve parâmetros saneados quando pronto", async () =>
     assert.equal(readPromotion(dataDir), null);
     write({ promotion: { ready: false, studentId: "rapido" }, students: [{ id: "rapido", params: { minProbEntry: 75 } }] });
     assert.equal(readPromotion(dataDir), null);
-    write({ promotion: { ready: true, studentId: "rapido" }, students: [{ id: "rapido", name: "Caio", params: { minProbEntry: 75, leverage: 20 } }] });
+    write({ version: SCHOOL_VERSION, promotion: { ready: true, studentId: "rapido" }, students: [{ id: "rapido", name: "Caio", params: { minProbEntry: 75, leverage: 20 } }] });
     assert.deepEqual(readPromotion(dataDir).params, { minProbEntry: 75 });
   } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });

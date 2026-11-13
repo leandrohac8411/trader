@@ -169,6 +169,7 @@ export async function getPositions() {
       size: Number(p.size),
       entry: Number(p.avgPrice),
       unrealisedPnl: Number(p.unrealisedPnl),
+      markPrice: Number(p.markPrice) || null,
       stopLoss: Number(p.stopLoss) || null,
       takeProfit: Number(p.takeProfit) || null,
     }));

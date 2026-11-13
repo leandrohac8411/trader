@@ -1,4 +1,4 @@
-// "Escola de traders": six student variants of the strategy in a classroom with a ranking board.
+// "Escola de traders": nine student variants of the strategy in a classroom with a ranking board.
 // Everything shown comes from snapshot.school (server/src/services/school.js); nothing is invented.
 import * as THREE from 'three';
 import { makeCanvas, canvasPanel, roundRect } from './voxel.js';
@@ -12,8 +12,16 @@ const STUDENT_LOOKS = {
   alvo: { skin: '#8d5a3b', hair: '#141010', hairStyle: 'short', jacket: '#7fe0a6' },
   lento: { skin: '#f3c9a6', hair: '#d9b25a', hairStyle: 'long', jacket: '#c7a0ff' },
   largo: { skin: '#e2b08a', hair: '#5b3b26', hairStyle: 'swept', jacket: '#ffa66b' },
+  antigo: { skin: '#d8a47f', hair: '#9a9a9a', hairStyle: 'short', jacket: '#9aa7ad' },
+  quatro: { skin: '#b97e57', hair: '#2a1a12', hairStyle: 'bob', jacket: '#6fd3e0' },
+  quatro3: { skin: '#f1c7a1', hair: '#3a2a1c', hairStyle: 'swept', jacket: '#e0c36f' },
 };
-const SEATS = [['base', -2.2, 3.5], ['rapido', 0.7, 3.5], ['curto', -2.2, 5.3], ['alvo', 0.7, 5.3], ['lento', -2.2, 7.1], ['largo', 0.7, 7.1]];
+// 3 fileiras × 3 carteiras: a turma do bot na frente.
+const SEATS = [
+  ['base', -2.4, 3.5], ['antigo', 0.3, 3.5], ['alvo', 3.0, 3.5],
+  ['quatro', -2.4, 5.3], ['quatro3', 0.3, 5.3], ['rapido', 3.0, 5.3],
+  ['curto', -2.4, 7.1], ['lento', 0.3, 7.1], ['largo', 3.0, 7.1],
+];
 const STATUS_COLOR = { aprovado: '#4ade80', aguardando: '#fbbf24', amostra: '#94a3b8', reprovado: '#ef4444', 'reprovado-prova': '#f97316' };
 const YAW = -Math.PI / 2; // students face -X, towards the board
 
@@ -111,7 +119,7 @@ function drawBoard({ ctx, texture }, school) {
   ctx.font = '600 21px "IBM Plex Mono", monospace';
   ctx.fillStyle = '#b8c9b9';
   const when = school?.lastRun ? new Date(school.lastRun).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
-  ctx.fillText(school?.running ? 'AVALIANDO…' : `1H · ${school?.symbols?.length || 0} MERCADOS · ${when}`, W - 40, 68);
+  ctx.fillText(school?.running ? 'AVALIANDO…' : `1H/4H · ${school?.symbols?.length || 0} MERCADOS · ${when}`, W - 40, 68);
   ctx.textAlign = 'left';
   const list = school?.students || [];
   if (!list.length) {
@@ -125,18 +133,25 @@ function drawBoard({ ctx, texture }, school) {
   ctx.fillStyle = '#93a796';
   const cols = [40, 110, 330, 520, 700, 860];
   ['#', 'ALUNO', 'ESTUDO R/T', 'PROVA R/T', 'PAPEL', 'SITUAÇÃO'].forEach((h, i) => ctx.fillText(h, cols[i], 120));
+  const rowH = Math.min(56, (H - 90 - 168) / Math.max(1, list.length - 1));
   list.forEach((s, i) => {
-    const y = 168 + i * 56;
+    const y = 168 + i * rowH;
     const color = STATUS_COLOR[s.status?.code] || '#94a3b8';
     if (s.id === school.candidateId) {
       ctx.fillStyle = 'rgba(232,195,90,.14)';
-      ctx.fillRect(28, y - 36, W - 56, 50);
+      ctx.fillRect(28, y - rowH * 0.66, W - 56, rowH * 0.9);
     }
     ctx.fillStyle = '#f3efe0';
     ctx.font = '700 28px sans-serif';
     ctx.fillText(String(s.rank), cols[0], y);
     ctx.fillStyle = s.color || '#f3efe0';
     ctx.fillText(s.name, cols[1], y);
+    if (s.interval && s.interval !== '60') {
+      const nameW = ctx.measureText(s.name).width;
+      ctx.font = '600 18px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#93a796';
+      ctx.fillText(s.interval === '240' ? '4H' : s.interval, cols[1] + nameW + 10, y);
+    }
     ctx.font = '600 25px "IBM Plex Mono", monospace';
     ctx.fillStyle = s.study.expectancyR > 0 ? '#86efac' : '#fca5a5';
     ctx.fillText(`${fmtR(s.study.expectancyR)} (${s.study.n})`, cols[2], y);

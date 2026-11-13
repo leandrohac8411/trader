@@ -63,8 +63,8 @@ export function SchoolBoard({ school, onRun, disabled }) {
   return <section className="school-board" aria-label="Escola de traders">
     <header>
       <div><span className="goal-eyebrow">ESCOLA DE TRADERS · PROFESSORA SOFIA</span>
-        <h3>Seis variações da estratégia, avaliadas em papel</h3>
-        <small>Velas de 1h em {school.symbols?.length || 0} mercados ({school.candles || 0} velas cada). Estudo = primeiros {Math.round((rules.split || 0.7) * 100)}% · prova = o resto · papel = trades iniciados depois de {new Date(school.startedAt).toLocaleDateString('pt-BR')}.</small></div>
+        <h3>{school.students?.length || 'As'} variações da estratégia, avaliadas em papel</h3>
+        <small>Velas de 1h (4h para quem tem a etiqueta) em {school.symbols?.length || 0} mercados ({school.candles || 0} velas cada). Estudo = primeiros {Math.round((rules.split || 0.7) * 100)}% · prova = o resto · papel = trades iniciados depois de {new Date(school.startedAt).toLocaleDateString('pt-BR')}.</small></div>
       <div className="school-run"><small>{school.running || busy ? 'Avaliando…' : when ? `Avaliada ${when}` : 'Primeira avaliação em breve'}</small>
         <button type="button" onClick={go} disabled={disabled || busy || school.running}>Reavaliar agora</button></div>
     </header>

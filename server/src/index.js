@@ -423,7 +423,7 @@ app.get("/api/bot/status", async (_req, res) => {
         symbols: bot.CFG.symbols,
         timeframes: bot.CFG.timeframes,
         riskPct: bot.CFG.riskPct,
-        minProb: bot.CFG.minProb,
+        minProb: bot.CFG.minProb, profile: bot.CFG.profile, rr1: bot.CFG.rr1, stMult: bot.CFG.stMult,
         dailyLossLimitPct: bot.CFG.dailyLossLimitPct,
         maxOpen: bot.CFG.maxOpen,
         maxNotionalPct: bot.CFG.maxNotionalPct,
@@ -459,7 +459,7 @@ app.get("/api/bot/watch", async (_req, res) => {
           } catch {
             /* opcional */
           }
-          const a = analyzeCandles(candles, { htfCloses, minProbEntry: bot.CFG.minProb });
+          const a = analyzeCandles(candles, { htfCloses, ...bot.strategyParams() });
           items.push({
             symbol,
             tf,
@@ -542,13 +542,14 @@ const office = createOffice({
     const [equity, positions] = await Promise.all([demoEquity(), demoPositions()]);
     return { equity: round(equity, 2), dayStartEquity: round(s.dayStartEquity || equity, 2), paused: s.paused || false,
       dryRun: bot.CFG.dryRun, positions: positions.map(p => ({ symbol: p.symbol, side: p.side, size: p.size, entry: p.entry,
-        unrealisedPnl: round(p.unrealisedPnl, 2), stopLoss: p.stopLoss, takeProfit: p.takeProfit })) };
+        unrealisedPnl: round(p.unrealisedPnl, 2), markPrice: p.markPrice, stopLoss: p.stopLoss, takeProfit: p.takeProfit })) };
   },
-  // Escola: 1.000 velas de 1h + HTF 4h alinhado pelo FECHAMENTO (sem lookahead).
-  loadSchoolInputs: async (symbol) => {
-    const inputs = await btInputs({ symbol, interval: '60', limit: '1000', htf: '1' });
-    const shift = 240 * 60_000 - 60 * 60_000;
-    // Descarta a vela 4h ainda em formação.
+  // Escola: 1.000 velas do período do aluno (1h ou 4h) + período maior alinhado pelo FECHAMENTO (sem lookahead).
+  loadSchoolInputs: async (symbol, interval = '60') => {
+    const inputs = await btInputs({ symbol, interval, limit: '1000', htf: '1' });
+    const htfMs = bot.tfMinutes(higherTF(interval)) * 60_000;
+    const shift = htfMs - bot.tfMinutes(interval) * 60_000;
+    // Descarta a vela maior ainda em formação.
     return { candles: inputs.candles, htfCandles: inputs.htfCandles?.slice(0, -1).map(c => ({ ...c, ts: c.ts + shift })) };
   },
   backtest: async ({ symbol, interval }) => {

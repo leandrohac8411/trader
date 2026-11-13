@@ -20,14 +20,23 @@ export const PARAM_BOUNDS = {
   lookback: [3, 20],
 };
 
+// Os parâmetros de cada aluno se somam aos do bot (perfil v2: score ≥ 90, alvo 3R, SuperTrend 4).
+// interval: período das velas do aluno (padrão: o da escola, 1h).
 export const STUDENTS = [
-  { id: "base", name: "Bia", emoji: "📘", color: "#8fb3ff", style: "Faz exatamente o que o bot faz hoje", params: {} },
-  { id: "rapido", name: "Caio", emoji: "⚡", color: "#ffcf5a", style: "Entra mais cedo (score ≥ 75)", params: { minProbEntry: 75 } },
-  { id: "curto", name: "Duda", emoji: "🎯", color: "#ff8fb1", style: "Alvo curto, 1R", params: { rr1: 1 } },
-  { id: "alvo", name: "Hugo", emoji: "🏹", color: "#7fe0a6", style: "Alvo longo, 2R", params: { rr1: 2 } },
+  { id: "base", name: "Bia", emoji: "📘", color: "#8fb3ff", style: "Faz exatamente o que o bot faz hoje (score ≥ 90, alvo 3R, SuperTrend 4)", params: {} },
+  { id: "antigo", name: "Rafa", emoji: "🕰️", color: "#9aa7ad", style: "O bot antigo (score ≥ 85, alvo 1,5R, SuperTrend 3), para comparar", params: { minProbEntry: 85, rr1: 1.5, stMult: 3 } },
+  { id: "alvo", name: "Hugo", emoji: "🏹", color: "#7fe0a6", style: "Candidata: alvo 2R", params: { rr1: 2 } },
+  { id: "quatro", name: "Lia", emoji: "🌙", color: "#6fd3e0", style: "Candidata 4h: alvo 2R, SuperTrend 3", interval: "240", params: { rr1: 2, stMult: 3 } },
+  { id: "quatro3", name: "Gil", emoji: "🦉", color: "#e0c36f", style: "Candidata 4h: alvo 3R, SuperTrend 3", interval: "240", params: { stMult: 3 } },
+  { id: "rapido", name: "Caio", emoji: "⚡", color: "#ffcf5a", style: "Entra mais cedo (score ≥ 85)", params: { minProbEntry: 85 } },
+  { id: "curto", name: "Duda", emoji: "🎯", color: "#ff8fb1", style: "Alvo curto, 1,5R", params: { rr1: 1.5 } },
   { id: "lento", name: "Nina", emoji: "🐢", color: "#c7a0ff", style: "Médias lentas (EMA 30/100)", params: { emaFast: 30, emaSlow: 100 } },
-  { id: "largo", name: "Theo", emoji: "🧱", color: "#ffa66b", style: "Stop mais largo (SuperTrend 4×, swing 10)", params: { stMult: 4, lookback: 10 } },
+  { id: "largo", name: "Theo", emoji: "🧱", color: "#ffa66b", style: "Stop no swing de 10 velas", params: { lookback: 10 } },
 ];
+
+// Troca de turma (13/11/2026: bot passou ao perfil v2). Mudar a turma zera o papel:
+// trades em papel da turma antiga não valem para alunos com outros parâmetros.
+export const SCHOOL_VERSION = "v2";
 
 export const SCHOOL_RULES = { split: 0.7, minStudy: 15, minExam: 6, minPaper: 10 };
 
@@ -164,7 +173,7 @@ export function readSchoolState(dataDir) {
 /** Parâmetros promovidos, se a promoção estiver pronta. Usado pelo bot só com BOT_SCHOOL_PROMOTE=1. */
 export function readPromotion(dataDir) {
   const s = readSchoolState(dataDir);
-  if (!s?.promotion?.ready || !s.promotion.studentId) return null;
+  if (!s?.promotion?.ready || !s.promotion.studentId || s.version !== SCHOOL_VERSION) return null;
   const st = s.students?.find((x) => x.id === s.promotion.studentId);
   if (!st) return null;
   return { studentId: st.id, name: st.name, params: sanitizeParams(st.params), at: s.lastRun };
@@ -177,10 +186,11 @@ export function readPromotion(dataDir) {
  */
 export function createSchool({ loadInputs, dataDir, symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"],
   interval = "60", baseParams = {}, everyMs = 30 * 60_000, now = Date.now, onChange = () => {}, onEvent = () => {},
-  rules = SCHOOL_RULES, promoteEnabled = false, backtest = runBacktest } = {}) {
+  rules = SCHOOL_RULES, promoteEnabled = false, backtest = runBacktest, students = STUDENTS } = {}) {
   const stateFile = fileIn(dataDir, "school.json");
-  const paperFile = fileIn(dataDir, "school-paper.jsonl");
+  const paperFile = fileIn(dataDir, `school-paper-${SCHOOL_VERSION}.jsonl`);
   let saved = readSchoolState(dataDir);
+  if (saved && saved.version !== SCHOOL_VERSION) saved = null; // turma nova: começa do zero
   let startedAt = saved?.startedAt || now();
   let running = false, timer = null, lastError = null, nextRun = null;
   let result = saved?.students ? saved : null;
@@ -198,13 +208,20 @@ export function createSchool({ loadInputs, dataDir, symbols = ["BTCUSDT", "ETHUS
     lastError = null;
     onChange();
     try {
-      const datasets = [];
-      for (const symbol of symbols) {
-        try { datasets.push({ symbol, ...(await loadInputs(symbol)) }); } catch { /* mercado indisponível */ }
+      // velas por período (1h para a maioria; 4h para quem pede)
+      const byInterval = {};
+      for (const iv of [...new Set(students.map((s) => s.interval || interval))]) {
+        const list = [];
+        for (const symbol of symbols) {
+          try { list.push({ symbol, ...(await loadInputs(symbol, iv)) }); } catch { /* mercado indisponível */ }
+        }
+        byInterval[iv] = list;
       }
+      const datasets = byInterval[interval] || Object.values(byInterval)[0] || [];
       if (!datasets.length) throw Error("Sem velas para avaliar.");
-      const graded = STUDENTS.map((s) => ({ id: s.id, name: s.name, emoji: s.emoji, color: s.color, style: s.style,
-        ...gradeStudent(s, datasets, { split: rules.split, baseParams, backtest }) }));
+      const graded = students.map((s) => ({ id: s.id, name: s.name, emoji: s.emoji, color: s.color, style: s.style,
+        interval: s.interval || interval,
+        ...gradeStudent(s, byInterval[s.interval || interval] || [], { split: rules.split, baseParams, backtest }) }));
 
       // papel: grava trades encerrados que COMEÇARAM depois da abertura da escola
       const seen = new Set(readPaper().map((p) => p.key));
@@ -224,7 +241,7 @@ export function createSchool({ loadInputs, dataDir, symbols = ["BTCUSDT", "ETHUS
       const ranked = rankSchool(graded, { paper, rules });
       const wasReady = result?.promotion?.ready ? result.promotion.studentId : null;
       result = {
-        startedAt, lastRun: now(), interval, symbols: datasets.map((d) => d.symbol),
+        version: SCHOOL_VERSION, startedAt, lastRun: now(), interval, symbols: datasets.map((d) => d.symbol),
         candles: datasets[0]?.candles?.length || 0, rules,
         candidateId: ranked.candidateId, promotion: ranked.promotion,
         // eslint-disable-next-line no-unused-vars
@@ -271,6 +288,7 @@ export function createSchool({ loadInputs, dataDir, symbols = ["BTCUSDT", "ETHUS
   // Serverless: recarrega o que outra execução gravou e diz se já é hora de reavaliar.
   function reload() {
     saved = readSchoolState(dataDir);
+    if (saved && saved.version !== SCHOOL_VERSION) saved = null;
     if (saved?.startedAt) startedAt = saved.startedAt;
     result = saved?.students ? saved : null;
   }

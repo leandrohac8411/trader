@@ -88,3 +88,9 @@ Cada "ano" sorteia 481 trades (com reposição) entre os trades da carteira, com
 - O que melhora é consistente: **score mais alto (≥ 90), alvo maior (2–3R) e stop mais largo (SuperTrend 4)**. Entrar menos e deixar o lucro correr.
 - 45 das 50 variações positivas no treino continuaram positivas em 2026. Isso sugere um padrão real, mas fraco: em 2026 nenhuma tem o intervalo de 95% inteiro acima de zero.
 - Escolher a melhor entre 108 sempre infla o resultado (viés de seleção). Nenhuma está **comprovada**; as melhores são **candidatas** para teste na demo.
+
+## Decisão (13/11/2026)
+
+- O bot demo passou ao **perfil v2**: 1h+4h, score ≥ 90, alvo 3R, SuperTrend 4 (`BOT_PROFILE=v2`, padrão). O perfil antigo continua disponível como `BOT_PROFILE=v1`; `BOT_PROFILE=custom` usa `BOT_MIN_PROB`, `BOT_RR1` e `BOT_ST_MULT`.
+- A escola ganhou uma turma nova (papel zerado em 13/11): o bot atual (Bia), o bot antigo (Rafa) e as candidatas 1h alvo 2R (Hugo), 4h alvo 2R ST 3 (Lia) e 4h alvo 3R ST 3 (Gil), além das variações de sempre.
+- Critério antes de pensar em dinheiro real: ~30 trades da nova rodada na demo e a validação rodada de novo com os dados novos.

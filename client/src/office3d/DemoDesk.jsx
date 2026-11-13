@@ -67,6 +67,26 @@ function DailyBoard({ byDay = [], today }) {
   </div>;
 }
 
+// Onde o preço está entre o stop (esquerda) e o alvo (direita); o tracinho é a entrada.
+export function positionTrack({ side, entry, markPrice: mark, stopLoss: stop, takeProfit: tp }) {
+  if (![entry, mark, stop, tp].every(Number.isFinite) || stop === tp) return null;
+  const at = (x) => Math.min(100, Math.max(0, ((x - stop) / (tp - stop)) * 100));
+  const towardTarget = side === 'Buy' ? mark >= entry : mark <= entry;
+  const share = towardTarget ? (mark - entry) / (tp - entry) : (mark - entry) / (stop - entry);
+  const pct = Math.round(Math.min(1, Math.max(0, share || 0)) * 100);
+  return { markPct: at(mark), entryPct: at(entry), towardTarget, pct,
+    label: towardTarget ? `${pct}% do caminho até o alvo` : `${pct}% do caminho até o stop` };
+}
+
+function PositionTrack({ p }) {
+  const t = positionTrack(p);
+  if (!t) return '—';
+  return <div className={`pos-track ${t.towardTarget ? 'good' : 'bad'}`} title={t.label}>
+    <span className="pos-track-bar" aria-hidden="true"><i className="entry" style={{ left: `${t.entryPct}%` }} /><i className="mark" style={{ left: `${t.markPct}%` }} /></span>
+    <small>{t.label}</small>
+  </div>;
+}
+
 export default function DemoDesk({ snapshot, connected }) {
   const bot = snapshot?.bot, res = snapshot?.results;
   const { desk, error } = useDesk(!!bot?.enabled && connected);
@@ -103,8 +123,9 @@ export default function DemoDesk({ snapshot, connected }) {
         {!bot?.enabled ? <p className="quiet-copy">Ligue o bot (DEMO_BOT=1) para ver as posições da conta demo.</p>
           : !desk ? <p className="quiet-copy">Consultando…</p>
           : !desk.positions?.length ? <p className="quiet-copy">Nenhuma posição aberta na conta demo.</p>
-          : <table className="desk-table"><thead><tr><th>Ativo</th><th>Lado</th><th>Entrada</th><th>Stop</th><th>Alvo</th><th>Resultado</th></tr></thead>
-            <tbody>{desk.positions.map(p => <tr key={p.symbol}><td data-label="Ativo">{p.symbol.replace('USDT', '')}</td><td data-label="Lado">{p.side === 'Buy' ? 'Compra' : 'Venda'}</td><td data-label="Entrada">{p.entry}</td><td data-label="Stop">{p.stopLoss ?? '—'}</td><td data-label="Alvo">{p.takeProfit ?? '—'}</td>
+          : <table className="desk-table"><thead><tr><th>Ativo</th><th>Lado</th><th>Entrada</th><th>Agora</th><th>Stop</th><th>Alvo</th><th>Andamento</th><th>Resultado</th></tr></thead>
+            <tbody>{desk.positions.map(p => <tr key={p.symbol}><td data-label="Ativo">{p.symbol.replace('USDT', '')}</td><td data-label="Lado">{p.side === 'Buy' ? 'Compra' : 'Venda'}</td><td data-label="Entrada">{p.entry}</td><td data-label="Agora">{p.markPrice ?? '—'}</td><td data-label="Stop">{p.stopLoss ?? '—'}</td><td data-label="Alvo">{p.takeProfit ?? '—'}</td>
+              <td data-label="Andamento"><PositionTrack p={p} /></td>
               <td data-label="Resultado" className={p.unrealisedPnl >= 0 ? 'pos' : 'neg'}>{usd(p.unrealisedPnl, true)}</td></tr>)}</tbody></table>}
       </div>
     </div>

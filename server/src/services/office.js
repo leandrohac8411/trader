@@ -41,7 +41,7 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
     onEvent:e=>event(e.agentId,e.type,e.message,e.correlationId) });
   // Escola de traders: avaliação em papel; Sofia é a professora. Não envia ordens.
   const school = loadSchoolInputs ? createSchool({ loadInputs: loadSchoolInputs, dataDir,
-    baseParams: { minProbEntry: bot.CFG.minProb }, promoteEnabled: !!bot.CFG.schoolPromote, onChange: publish,
+    baseParams: bot.strategyParams({ promotion: null }), promoteEnabled: !!bot.CFG.schoolPromote, onChange: publish,
     onEvent: e => { if (!e.quiet) event('scientist', e.type, e.message, randomUUID()); } }) : null;
   function event(agentId, type, message, correlationId) {
     const item = { id: randomUUID(), ts: Date.now(), agentId, type, message, correlationId, source: 'office' };
@@ -119,7 +119,7 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
       bot: { enabled: bot.CFG.enabled, dryRun: bot.CFG.dryRun, paused: state.paused || false,
         recordedDay: state.dayKey || null, positions, summary, closedTrades: trades,
         config: { riskPct: bot.CFG.riskPct, maxOpen: bot.CFG.maxOpen, dailyLossLimitPct: bot.CFG.dailyLossLimitPct,
-          minProb: bot.CFG.minProb, maxNotionalPct: bot.CFG.maxNotionalPct },
+          minProb: bot.CFG.minProb, profile: bot.CFG.profile, rr1: bot.CFG.rr1, stMult: bot.CFG.stMult, maxNotionalPct: bot.CFG.maxNotionalPct },
         lastEventAt: botEvents.length ? new Date(Math.max(...botEvents.map(e=>e.ts))).toISOString() : null,
         source: 'local-history', reconciled: false },
       agents: TEAM.map(agent => ({ ...agent, state: jobs.get(agent.id)?.state==='working'?'working':

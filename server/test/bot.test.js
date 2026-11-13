@@ -199,3 +199,20 @@ test("entryStillValid: só entra se o preço atual ainda estiver entre stop e al
   assert.equal(entryStillValid({ dir: "LONG", live: 94, stop: 95, tp: 108 }), false);
   assert.equal(entryStillValid({ dir: "LONG", live: NaN, stop: 95, tp: 108 }), false);
 });
+
+test("adoptPositions adota posições da corretora que o estado não conhece", async () => {
+  const { adoptPositions } = await import("../src/services/bot.js");
+  const state = { keys: { "ETHUSDT|60": { open: { side: "Sell" } } } };
+  const positions = [
+    { symbol: "ETHUSDT", side: "Sell", size: 1, entry: 1952, stopLoss: 1999.65, takeProfit: 1879.21, openedAt: 1 },
+    { symbol: "SOLUSDT", side: "Sell", size: 100, entry: 79.86, stopLoss: 82.85, takeProfit: 75.69, openedAt: 2 },
+    { symbol: "DOGEUSDT", side: "Buy", size: 5, entry: 1, stopLoss: 0.9, takeProfit: 1.2, openedAt: 3 },
+  ];
+  const adopted = adoptPositions({ state, positions, symbols: ["ETHUSDT", "SOLUSDT"], timeframes: ["60", "240"], now: 9 });
+  assert.deepEqual(adopted.map((a) => a.key), ["SOLUSDT|240"]); // ETH já era nossa; DOGE fora da lista
+  const o = state.keys["SOLUSDT|240"].open;
+  assert.equal(o.side, "Sell");
+  assert.equal(o.openedAt, 2);
+  assert.ok(Math.abs(o.riskUsd - 100 * (82.85 - 79.86)) < 1e-6);
+  assert.equal(adoptPositions({ state, positions, symbols: ["ETHUSDT", "SOLUSDT"], timeframes: ["60", "240"] }).length, 0); // não adota duas vezes
+});

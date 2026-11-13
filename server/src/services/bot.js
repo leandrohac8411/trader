@@ -165,6 +165,27 @@ export function sizePosition({
   return { ok: true, qty, notional, riskUsd: qty * dist, capped };
 }
 
+/**
+ * Adota posições abertas na corretora que o estado não conhece (ex.: banco novo, estado perdido).
+ * Sem isso o bot nunca registraria o fechamento delas. O período real é desconhecido: usa o mais
+ * lento (o que dura mais). Muta o estado e devolve as posições adotadas.
+ */
+export function adoptPositions({ state, positions, symbols, timeframes, now = Date.now() }) {
+  const tracked = new Set(Object.entries(state.keys || {}).filter(([, k]) => k.open).map(([key]) => key.split("|")[0]));
+  const tf = timeframes.at(-1);
+  const adopted = [];
+  for (const p of positions) {
+    if (!symbols.includes(p.symbol) || tracked.has(p.symbol) || !(p.size > 0)) continue;
+    const key = `${p.symbol}|${tf}`;
+    const ks = (state.keys[key] ||= { lastSignal: null, lastExitTs: 0, open: null, lastStage: null, lastBlockReason: null });
+    const risk = p.stopLoss ? p.size * Math.abs(p.entry - p.stopLoss) : 0;
+    ks.open = { side: p.side, qty: p.size, entry: p.entry, stop: p.stopLoss, tp: p.takeProfit,
+      riskUsd: risk, prob: null, openedAt: p.openedAt || now, adopted: true };
+    adopted.push({ key, symbol: p.symbol, tf, side: p.side, entry: p.entry, stop: p.stopLoss, tp: p.takeProfit });
+  }
+  return adopted;
+}
+
 /** Agrega o log de trades no MESMO shape do report.trades do backtest. */
 // Risco efetivo por trade: base, ou o degrau da escada 10V/5D quando BOT_LADDER=1.
 export function effectiveRiskPct({ trades = [], equityBase = 0, cfg = CFG } = {}) {
@@ -318,6 +339,10 @@ export async function tickOnce() {
     const stratParams = strategyParams({ promotion: CFG.schoolPromote ? readPromotion(DATA_DIR) : null });
     const positions = await demo.getPositions();
     const posBySymbol = Object.fromEntries(positions.map((p) => [p.symbol, p]));
+    for (const a of adoptPositions({ state: s, positions, symbols: CFG.symbols, timeframes: CFG.timeframes })) {
+      appendEvent({ type: "adopted", symbol: a.symbol, tf: a.tf, dir: a.side === "Buy" ? "LONG" : "SHORT", entry: a.entry, stop: a.stop, tp: a.tp });
+      log.push(`${a.key}: posição já aberta na corretora adotada (stop ${a.stop}, alvo ${a.tp})`);
+    }
     // conta posições REAIS na corretora, não só o que está no nosso estado
     let openCount = Math.max(positions.length, Object.values(s.keys).filter((k) => k.open).length);
     let opensThisTick = 0;

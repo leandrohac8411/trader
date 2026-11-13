@@ -295,7 +295,7 @@ export function proposalsWithOutcome(events) {
 
 function describeBotEvent(e) {
   const prefix = [e.symbol, e.tf ? `${e.tf}m` : ''].filter(Boolean).join(' · ');
-  const labels = { opened:'Abertura demo registrada',closed:'Fechamento registrado',would_open:'Entrada simulada em dry-run',
+  const labels = { opened:'Abertura demo registrada',adopted:'Posição já aberta na corretora adotada pelo bot',closed:'Fechamento registrado',would_open:'Entrada simulada em dry-run',
     stage:'Mudança de estágio',watching:'Monitoramento registrado',blocked:'Proposta barrada pelo Ricardo',approved:'Proposta aprovada pelo Ricardo',unreconciled:'Posição antiga sem fechamento na corretora (não contabilizada)',error:'Falha de execução' };
   // Deliberately omit arbitrary provider error strings from the event feed/LLM.
   // O motivo de bloqueio vem do checklist local (approval.js), não da corretora.

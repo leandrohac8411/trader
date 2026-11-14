@@ -334,3 +334,14 @@
 .office-app.ui-v2 .v2-symbol{font:800 19px 'Plus Jakarta Sans',sans-serif!important;border:0!important;background:transparent!important;padding:0 18px 0 0!important;cursor:pointer;color:var(--text)!important}
 .office-app.ui-v2 .v2-symbol:hover{color:var(--amber)!important}
 @media(max-width:760px){.v2-clock{display:none}}
+
+/* Celular: logo no canto do topo (a barra lateral vira a barra de baixo) e saldo/P&L sem cortar */
+.office-app.ui-v2 .v2-head-logo{display:none}
+.office-app.ui-v2 .v2-account-top{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.office-app.ui-v2 .v2-account-top em{display:block;margin:4px 0 0}
+@media(max-width:760px){
+  .office-app.ui-v2 .v2-head-logo{display:block;margin-right:auto;flex-shrink:1;min-width:0}
+  .office-app.ui-v2 .v2-head-logo img{display:block;height:38px;width:auto;max-width:150px;object-fit:contain;object-position:left}
+  .office-app.ui-v2 .v2-account-top>div+div{padding-left:12px}
+  .office-app.ui-v2 .v2-account-top b{font-size:clamp(17px,5.4vw,22px)}
+}

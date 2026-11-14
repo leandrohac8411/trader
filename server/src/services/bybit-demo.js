@@ -172,7 +172,6 @@ export async function getPositions() {
       markPrice: Number(p.markPrice) || null,
       stopLoss: Number(p.stopLoss) || null,
       takeProfit: Number(p.takeProfit) || null,
-      openedAt: Number(p.createdTime) || null,
     }));
 }
 

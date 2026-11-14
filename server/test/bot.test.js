@@ -212,7 +212,13 @@ test("adoptPositions adota posições da corretora que o estado não conhece", a
   assert.deepEqual(adopted.map((a) => a.key), ["SOLUSDT|240"]); // ETH já era nossa; DOGE fora da lista
   const o = state.keys["SOLUSDT|240"].open;
   assert.equal(o.side, "Sell");
-  assert.equal(o.openedAt, 2);
+  assert.equal(o.openedAt, 9); // hora da adoção, não o createdTime velho da Bybit
+  // estado adotado antes da correção (sem adoptedAt) passa para a hora atual, uma vez só
+  const old = { keys: { "BTCUSDT|240": { open: { side: "Sell", openedAt: 1, adopted: true } } } };
+  adoptPositions({ state: old, positions: [], symbols: ["BTCUSDT"], timeframes: ["240"], now: 50 });
+  assert.equal(old.keys["BTCUSDT|240"].open.openedAt, 50);
+  adoptPositions({ state: old, positions: [], symbols: ["BTCUSDT"], timeframes: ["240"], now: 99 });
+  assert.equal(old.keys["BTCUSDT|240"].open.openedAt, 50);
   assert.ok(Math.abs(o.riskUsd - 100 * (82.85 - 79.86)) < 1e-6);
   assert.equal(adoptPositions({ state, positions, symbols: ["ETHUSDT", "SOLUSDT"], timeframes: ["60", "240"] }).length, 0); // não adota duas vezes
 });

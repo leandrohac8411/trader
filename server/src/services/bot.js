@@ -168,9 +168,14 @@ export function sizePosition({
 /**
  * Adota posições abertas na corretora que o estado não conhece (ex.: banco novo, estado perdido).
  * Sem isso o bot nunca registraria o fechamento delas. O período real é desconhecido: usa o mais
- * lento (o que dura mais). Muta o estado e devolve as posições adotadas.
+ * lento (o que dura mais). A hora de abertura também é desconhecida (o createdTime da Bybit é de
+ * quando o "slot" da posição nasceu, meses atrás): usa a hora da adoção. Muta o estado e devolve as adotadas.
  */
 export function adoptPositions({ state, positions, symbols, timeframes, now = Date.now() }) {
+  // adotadas antes desta correção ficaram com a hora velha da Bybit: passa para agora (uma vez)
+  for (const k of Object.values(state.keys || {})) {
+    if (k.open?.adopted && !k.open.adoptedAt) Object.assign(k.open, { openedAt: now, adoptedAt: now });
+  }
   const tracked = new Set(Object.entries(state.keys || {}).filter(([, k]) => k.open).map(([key]) => key.split("|")[0]));
   const tf = timeframes.at(-1);
   const adopted = [];
@@ -180,7 +185,7 @@ export function adoptPositions({ state, positions, symbols, timeframes, now = Da
     const ks = (state.keys[key] ||= { lastSignal: null, lastExitTs: 0, open: null, lastStage: null, lastBlockReason: null });
     const risk = p.stopLoss ? p.size * Math.abs(p.entry - p.stopLoss) : 0;
     ks.open = { side: p.side, qty: p.size, entry: p.entry, stop: p.stopLoss, tp: p.takeProfit,
-      riskUsd: risk, prob: null, openedAt: p.openedAt || now, adopted: true };
+      riskUsd: risk, prob: null, openedAt: now, adoptedAt: now, adopted: true };
     adopted.push({ key, symbol: p.symbol, tf, side: p.side, entry: p.entry, stop: p.stopLoss, tp: p.takeProfit });
   }
   return adopted;

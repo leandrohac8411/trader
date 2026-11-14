@@ -76,13 +76,16 @@ export function closeFromExecutions(execs, open) {
   const closeSide = open.side === "Buy" ? "Sell" : "Buy";
   let filled = 0, value = 0, fees = 0, last = null;
   for (const e of list) {
-    if (e.side !== closeSide || !(e.closedSize > 0)) continue;
-    const q = Math.min(e.closedSize, qty - filled);
+    if (e.side !== closeSide) continue;
+    // a demo devolve closedSize 0 até nos fechamentos: no modo de posição única, o lado oposto depois da abertura é o fechamento
+    const size = e.closedSize > 0 ? e.closedSize : e.qty;
+    if (!(size > 0)) continue;
+    const q = Math.min(size, qty - filled);
     filled += q; value += q * e.price; fees += e.fee * (q / e.qty || 1); last = e.time;
     if (filled >= qty * 0.98) break;
   }
   if (filled < qty * 0.98) return null;
-  const openFees = list.filter((e) => e.side === open.side && !(e.closedSize > 0) && e.time <= last).reduce((s, e) => s + e.fee, 0);
+  const openFees = list.filter((e) => e.side === open.side && e.time <= last).reduce((s, e) => s + e.fee, 0);
   const exit = value / filled;
   const dir = open.side === "Buy" ? 1 : -1;
   return { qty: filled, exit, closedPnl: dir * (exit - open.entry) * filled - fees - openFees, closedAt: last, source: "executions" };
@@ -477,7 +480,7 @@ export async function tickOnce() {
             const ex = await demo.getExecutions({ symbol: p.symbol, startTime: Math.max(0, (p.open.openedAt || 0) - 5_000), limit: 100 });
             c = closeFromExecutions(ex, p.open);
             // o que a corretora devolveu, para dar para ver por que não casou (em /api/bot/status)
-            p.info = `closed-pnl: ${closed.length} (mais recente ${closed[0] ? new Date(closed[0].closedAt).toISOString() : "—"}, qtd ${closed[0]?.qty ?? "—"}) · execuções: ${ex.length} (fechando: ${ex.filter((e) => e.closedSize > 0).map((e) => `${e.side} ${e.closedSize}`).join(", ") || "nenhuma"}) · posição qtd ${p.open.qty ?? "—"} aberta ${p.open.openedAt ? new Date(p.open.openedAt).toISOString() : "—"}`;
+            p.info = `closed-pnl: ${closed.length} (mais recente ${closed[0] ? new Date(closed[0].closedAt).toISOString() : "—"}, qtd ${closed[0]?.qty ?? "—"}) · execuções: ${ex.length} [${ex.map((e) => `${e.side} ${e.qty}@${e.price} fechou ${e.closedSize} ${e.execType || ""} ${new Date(e.time).toISOString().slice(11, 16)}`).join("; ")}] · posição qtd ${p.open.qty ?? "—"} aberta ${p.open.openedAt ? new Date(p.open.openedAt).toISOString() : "—"}`;
             delete p.error;
           }
         } catch (e) { p.error = String(e.message || e).slice(0, 200); }

@@ -328,3 +328,18 @@ test("closeFromExecutions: monta o fechamento pelas execuções quando o closed-
   const fromExec = await findClose({ getClosedPnl: async () => [], getExecutions: async () => execs }, "SOLUSDT", open);
   assert.equal(fromExec.source, "executions");
 });
+
+test("closeFromExecutions: a demo devolve closedSize 0 — o lado oposto depois da abertura é o fechamento", async () => {
+  const { closeFromExecutions } = await import("../src/services/bot.js");
+  // XRP 4h adotada (vendida 35966,3), fechou no alvo; depois abriu a XRP 1h (venda) — não pode confundir
+  const open = { side: "Sell", qty: 35966.3, entry: 1.0004, stop: 1.0498, tp: 0.9284, openedAt: 1_000_000 };
+  const execs = [
+    { side: "Buy", price: 0.9284, qty: 35966.3, fee: 18.3, closedSize: 0, execType: "Trade", time: 2_000_000 },
+    { side: "Sell", price: 0.9236, qty: 23693.1, fee: 12, closedSize: 0, execType: "Trade", time: 2_200_000 },
+  ];
+  const c = closeFromExecutions(execs, open);
+  assert.ok(c);
+  assert.equal(c.closedAt, 2_000_000);
+  assert.ok(Math.abs(c.exit - 0.9284) < 1e-9);
+  assert.ok(Math.abs(c.closedPnl - ((1.0004 - 0.9284) * 35966.3 - 18.3)) < 1e-6); // a abertura foi antes da adoção: sem taxa dela
+});

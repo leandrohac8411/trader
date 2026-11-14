@@ -19,6 +19,8 @@ const {
   readEvents,
   closedCandles,
   entryStillValid,
+  liveRR,
+  MIN_LIVE_RR_SHARE,
 } = await import("../src/services/bot.js");
 const { signV5, assertDemoBase, DEMO_BASE } = await import("../src/services/bybit-demo.js");
 
@@ -281,4 +283,17 @@ test("backfillPending: devolve os unreconciled recentes para a fila, sem repetir
   assert.equal(out.length, 1); // BNB sem evento de abertura; XRP antigo demais
   assert.deepEqual([out[0].open.stop, out[0].open.stop0, out[0].open.beMoved, out[0].open.qty], [1911.33, 1958.5, true, 18.96]);
   assert.equal(backfillPending({ events, trades: [{ symbol: "ETHUSDT", openedAt: now - 9000 }], now }).length, 0);
+});
+
+test("entrada atrasada: só entra se ainda sobrar ganho/risco mínimo a partir do preço atual", () => {
+  // XRP de 14/11: stop 1.002685, alvo 0.853029, entrou a 0.9236 → sobravam 0,89R
+  const xrp = { dir: "SHORT", live: 0.9236, stop: 1.002685, tp: 0.853029 };
+  assert.ok(Math.abs(liveRR(xrp) - 0.89) < 0.01);
+  assert.equal(entryStillValid(xrp), true); // sem mínimo: dentro da faixa
+  assert.equal(entryStillValid({ ...xrp, minRR: 2 * MIN_LIVE_RR_SHARE }), false);
+  // ETH de 14/11: entrou logo depois do sinal, 1,98R → passa
+  const eth = { dir: "SHORT", live: 1911.33, stop: 1958.509767, tp: 1817.750466 };
+  assert.equal(entryStillValid({ ...eth, minRR: 1.5 }), true);
+  assert.equal(entryStillValid({ dir: "LONG", live: 100, stop: 95, tp: 108, minRR: 1.5 }), true); // 1,6R
+  assert.equal(entryStillValid({ dir: "LONG", live: 102, stop: 95, tp: 108, minRR: 1.5 }), false); // 0,86R
 });

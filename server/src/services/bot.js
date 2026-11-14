@@ -182,10 +182,21 @@ async function runTimeMachine({ symbol, tf, dir, entry, stop, tp, params }) {
   }
 }
 
-export function entryStillValid({ dir, live, stop, tp }) {
+export function entryStillValid({ dir, live, stop, tp, minRR = 0 }) {
   if (![live, stop, tp].every(Number.isFinite)) return false;
-  return dir === "LONG" ? live > stop && live < tp : dir === "SHORT" ? live < stop && live > tp : false;
+  const inside = dir === "LONG" ? live > stop && live < tp : dir === "SHORT" ? live < stop && live > tp : false;
+  return inside && liveRR({ live, stop, tp }) >= minRR;
 }
+
+/** Ganho/risco a partir do preço atual (stop e alvo vêm do fechamento da vela do sinal). */
+export function liveRR({ live, stop, tp }) {
+  const risk = Math.abs(live - stop);
+  return risk > 0 ? Math.abs(tp - live) / risk : 0;
+}
+
+// Entrada atrasada (vaga abriu minutos depois do sinal): o preço já andou e o alvo ficou perto.
+// O backtest entra logo na vela seguinte, então só entra se ainda sobrar pelo menos 75% do alvo do perfil.
+export const MIN_LIVE_RR_SHARE = 0.75;
 
 export function cooldownMs(tf, candles = CFG.reentryCooldown) {
   return tfMinutes(tf) * candles * 60_000;
@@ -578,8 +589,10 @@ export async function tickOnce() {
             cd: cooldownMs(tf),
           })
         ) {
-          if (!entryStillValid({ dir: signal, live: livePrice, stop: a.levels.stop, tp: a.levels.tp1 })) {
-            log.push(`${key}: sinal ${signal} na vela fechada, mas o preço atual (${livePrice}) já saiu da faixa stop/alvo`);
+          const minRR = CFG.rr1 ? CFG.rr1 * MIN_LIVE_RR_SHARE : 0;
+          if (!entryStillValid({ dir: signal, live: livePrice, stop: a.levels.stop, tp: a.levels.tp1, minRR })) {
+            const rr = liveRR({ live: livePrice, stop: a.levels.stop, tp: a.levels.tp1 });
+            log.push(`${key}: sinal ${signal} na vela fechada, mas no preço atual (${livePrice}) ${Number.isFinite(rr) && rr > 0 ? `sobram só ${rr.toFixed(2)}R (mínimo ${minRR.toFixed(2)}R)` : "já saiu da faixa stop/alvo"}`);
             ks.lastSignal = signal;
             continue;
           }

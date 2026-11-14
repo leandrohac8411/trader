@@ -19,6 +19,7 @@ export const PARAM_BOUNDS = {
   emaSlow: [20, 200],
   lookback: [3, 20],
   breakevenAtR: [0.5, 3],
+  tightenOnAdverseAtr: [0.5, 3],
 };
 
 // Base fixa da escola: perfil v2 (score ≥ 90, alvo 3R, SuperTrend 4). Os parâmetros de cada aluno se somam a ela,
@@ -37,6 +38,7 @@ export const STUDENTS = [
   { id: "largo", name: "Theo", emoji: "🧱", color: "#ffa66b", style: "Stop no swing de 10 velas", params: { lookback: 10 } },
   { id: "empate", name: "Vera", emoji: "🛡️", color: "#9fd8c4", style: "Perfil v2 (alvo 3R) + stop no empate quando chega a 50% do alvo (1,5R)", params: { breakevenAtR: 1.5 } },
   { id: "atual", name: "Lara", emoji: "🧭", color: "#f2b56b", style: "O bot de hoje (perfil v3): 1h, alvo 2R, stop no empate em 1,5R", params: { rr1: 2, breakevenAtR: 1.5 } },
+  { id: "corte", name: "Beto", emoji: "✂️", color: "#e88f8f", style: "Como no manual: igual à Lara, mas quando vem uma vela forte contra (≥ 1 ATR) aproxima o stop e perde menos", params: { rr1: 2, breakevenAtR: 1.5, tightenOnAdverseAtr: 1 } },
 ];
 
 // Troca de turma (13/11/2026: bot passou ao perfil v2). Mudar a turma zera o papel:

@@ -43,6 +43,9 @@ export function runBacktest(candles, opts = {}) {
     // stop no empate: quando o preço andou X R a favor (máxima/mínima de uma vela FECHADA),
     // o stop vai para a entrada a partir da vela seguinte. Sem olhar o futuro dentro da vela.
     breakevenAtR = null,
+    // corta a perda cedo (como o trader manual): vela FECHADA contra a posição com corpo >= X ATR
+    // → o stop aproxima para o fechamento dela ± 0,5 ATR (só aperta, nunca afasta), a partir da vela seguinte.
+    tightenOnAdverseAtr = null,
     meta = {},
   } = opts;
 
@@ -161,6 +164,16 @@ export function runBacktest(candles, opts = {}) {
         pos.stop = pos.entry;
         pos.beMoved = true;
         pos.stopReason = "be";
+      }
+      if (exitPrice == null && tightenOnAdverseAtr && atrArr[j] > 0) {
+        const body = pos.dir * (close[j] - open[j]); // negativo = vela contra
+        if (-body >= tightenOnAdverseAtr * atrArr[j]) {
+          const tight = close[j] - pos.dir * 0.5 * atrArr[j];
+          if (pos.dir === 1 ? tight > pos.stop : tight < pos.stop) {
+            pos.stop = tight;
+            pos.stopReason = "cut";
+          }
+        }
       }
 
       if (exitPrice != null) {
@@ -319,7 +332,7 @@ export function runBacktest(candles, opts = {}) {
         slippagePct,
         riskPerTradePct,
         warmup,
-        exit: { exitOnReverse, breakevenAfterTp1, trailAtr, singleTarget, breakevenAtR },
+        exit: { exitOnReverse, breakevenAfterTp1, trailAtr, singleTarget, breakevenAtR, tightenOnAdverseAtr },
       },
     },
     trades: tradeStats,

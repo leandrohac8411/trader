@@ -151,3 +151,24 @@ test("trade guarda o stop da entrada (initStop) mesmo quando o stop anda", () =>
   assert.ok(moved.length >= 1);
   for (const t of moved) assert.ok(Math.abs(t.entry - t.initStop) > 0 && t.stop === t.entry);
 });
+
+test("tightenOnAdverseAtr: vela forte contra aproxima o stop (só aperta) e perde menos que o stop original", () => {
+  // sobe 45 velas, cai 3 de uma vez (vela forte contra) e segue descendo devagar até o stop original
+  const cs = series((i) => { const k = Math.floor(i / 60), m = i % 60; return m < 45 ? 100 + k * 10 + m * 0.5 : 100 + k * 10 + 19.5 - (m - 45) * 0.6; }, 400);
+  const opts = { warmup: 60, minProbEntry: 0, singleTarget: true, rr1: 2 };
+  const base = runBacktest(cs, opts);
+  const cut = runBacktest(cs, { ...opts, tightenOnAdverseAtr: 1 });
+  assert.equal(base.tradeList.filter((t) => t.reason === "cut").length, 0);
+  const cuts = cut.tradeList.filter((t) => t.reason === "cut");
+  assert.ok(cuts.length >= 1, JSON.stringify(cut.trades.byReason));
+  for (const t of cuts) {
+    assert.ok(t.barsHeld >= 1);
+    // o stop final ficou mais perto (ou do lado do lucro) que o da entrada
+    assert.ok(t.dir === "LONG" ? t.stop > t.initStop : t.stop < t.initStop);
+    assert.ok(t.netR > -0.6, `perda cortada: ${t.netR}`);
+  }
+  const sum = (r) => r.tradeList.reduce((x, t) => x + t.netR, 0);
+  assert.ok(sum(cut) > sum(base), `${sum(cut)} > ${sum(base)}`);
+  assert.equal(cut.meta.params.exit.tightenOnAdverseAtr, 1);
+  assert.deepEqual(cut, runBacktest(cs, { ...opts, tightenOnAdverseAtr: 1 }));
+});

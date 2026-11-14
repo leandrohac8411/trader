@@ -160,3 +160,14 @@ test("escola tem base fixa (v2) e a Lara representa o bot v3", async () => {
   assert.equal(seen[0].breakevenAtR, 1.5);
   assert.equal(seen[0].stMult, 4);
 });
+
+test("Beto = Lara + aperta o stop em vela forte contra", async () => {
+  const { STUDENTS, SCHOOL_BASE, gradeStudent, sanitizeParams } = await import("../src/services/school.js");
+  const beto = STUDENTS.find((s) => s.id === "corte");
+  assert.deepEqual(beto.params, { rr1: 2, breakevenAtR: 1.5, tightenOnAdverseAtr: 1 });
+  assert.equal(sanitizeParams({ tightenOnAdverseAtr: 9 }).tightenOnAdverseAtr, 3);
+  const seen = [];
+  gradeStudent(beto, [{ symbol: "X", candles: [{ ts: 1 }] }], { baseParams: SCHOOL_BASE, backtest: (c, o) => { seen.push(o); return { tradeList: [] }; } });
+  assert.equal(seen[0].tightenOnAdverseAtr, 1);
+  assert.equal(seen[0].rr1, 2);
+});

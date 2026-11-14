@@ -362,8 +362,9 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
     const free = people.filter(isFree).sort(() => Math.random() - 0.5).slice(0, 2);
     if (free.length < 2) return false;
     const [a, b] = free;
-    sendOn(a, 'cooler', routeTo(a.s.id, 'cooler', 0), { hold: 13, lines: gossipLines(f, a.s.id, b.s.id) });
-    sendOn(b, 'cooler', routeTo(b.s.id, 'cooler', 1), { hold: 13 });
+    const chat = gossipLines(f, a.s.id, b.s.id);
+    sendOn(a, 'cooler', routeTo(a.s.id, 'cooler', 0), { hold: Math.max(13, chat.length * 3.4 + 2), lines: chat });
+    sendOn(b, 'cooler', routeTo(b.s.id, 'cooler', 1), { hold: Math.max(13, chat.length * 3.4 + 2) });
     a.errand.partner = b;
     b.errand.partner = a;
     return true;

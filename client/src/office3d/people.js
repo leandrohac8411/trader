@@ -42,13 +42,26 @@ export function buildCharacter(kit, look) {
     return shoulder;
   });
 
-  // Coffee cup and energy-drink can in the right hand (shown only while drinking).
-  const cup = box(arms[1], [0.2, 0.24, 0.2], [0, -0.92, 0.12], '#f4f1ea', {}, { shadow: false });
-  box(cup, [0.21, 0.06, 0.21], [0, 0.04, 0], '#8b5a2b', {}, { shadow: false });
+  // Drinks, shown only while drinking. They sit just past the hand, big enough to read from afar.
+  // Coffee mug (right hand): white mug, dark coffee on top, handle, steam puffs.
+  const cup = group(arms[1], [0, -1.0, 0.04]);
+  box(cup, [0.3, 0.34, 0.3], [0, 0, 0], '#f7f3ea', {}, { shadow: false });
+  box(cup, [0.26, 0.03, 0.26], [0, 0.17, 0], '#5a3519', {}, { shadow: false });
+  box(cup, [0.06, 0.18, 0.12], [0.18, 0, 0], '#f7f3ea', {}, { shadow: false });
+  box(cup, [0.31, 0.06, 0.31], [0, -0.06, 0], '#c9963a', {}, { shadow: false });
+  const steam = [0, 1, 2].map(i => box(cup, [0.07, 0.07, 0.07], [(i - 1) * 0.07, 0.3 + i * 0.1, 0], new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.7, depthWrite: false }), {}, { shadow: false }));
   cup.visible = false;
-  const can = box(arms[1], [0.17, 0.32, 0.17], [0, -0.92, 0.12], '#1c2026', {}, { shadow: false });
-  box(can, [0.18, 0.1, 0.18], [0, 0.02, 0], '#38e8ff', { emissive: '#38e8ff', emissiveIntensity: 0.6 }, { shadow: false });
+  // Energy can (right hand): dark can, cyan band, silver top.
+  const can = group(arms[1], [0, -1.02, 0.04]);
+  box(can, [0.22, 0.42, 0.22], [0, 0, 0], '#14181f', {}, { shadow: false });
+  box(can, [0.23, 0.12, 0.23], [0, 0.04, 0], '#38e8ff', { emissive: '#38e8ff', emissiveIntensity: 0.7 }, { shadow: false });
+  box(can, [0.2, 0.03, 0.2], [0, 0.22, 0], '#c7ccd4', {}, { shadow: false });
   can.visible = false;
+  // Paper cup of water (left hand) for chats by the cooler.
+  const water = group(arms[0], [0, -1.0, 0.04]);
+  box(water, [0.24, 0.3, 0.24], [0, 0, 0], '#eef7fb', {}, { shadow: false });
+  box(water, [0.21, 0.03, 0.21], [0, 0.15, 0], '#7cc3ea', { transparent: true, opacity: 0.9 }, { shadow: false });
+  water.visible = false;
 
   // Game controller, only visible while playing in the lounge.
   const controller = box(torso, [0.46, 0.1, 0.22], [0, 0.36, 0.64], '#22252c');
@@ -74,7 +87,7 @@ export function buildCharacter(kit, look) {
   }
   addHair(kit, head, look);
 
-  return { root, hips, torso, arms, legs, neck, head, controller, cup, can, look, phase: Math.random() * 10 };
+  return { root, hips, torso, arms, legs, neck, head, controller, cup, can, water, steam, look, phase: Math.random() * 10 };
 }
 
 function addHair(kit, head, { hair, hairStyle }) {
@@ -118,6 +131,13 @@ export function pose(c, state, t, motion) {
   c.controller.visible = state === 'gaming';
   c.cup.visible = state === 'coffee';
   c.can.visible = state === 'energy';
+  if (c.water) c.water.visible = state === 'chatting';
+  if (state === 'coffee' && c.steam) c.steam.forEach((s, i) => {
+    const k = ((t * 0.6 + i / 3 + c.phase) % 1);
+    s.position.y = 0.26 + k * 0.4;
+    s.position.x = (i - 1) * 0.07 + Math.sin(t * 2 + i) * 0.03;
+    s.material.opacity = 0.75 * (1 - k);
+  });
   c.hips.position.y = seated ? HIP_SIT : HIP_STAND + Math.abs(Math.sin(t * 8)) * 0.04 * m;
   c.torso.rotation.set(0, 0, 0);
   c.head.rotation.set(0, 0, 0);
@@ -150,17 +170,19 @@ export function pose(c, state, t, motion) {
   if (state === 'coffee' || state === 'energy') {
     // Standing, sipping now and then.
     c.hips.position.y = HIP_STAND;
-    const sip = Math.max(0, Math.sin(t * 1.3 + ph)) * m;
-    right.rotation.x = -1.1 - sip * 1.15;
-    right.rotation.z = 0.25 * sip;
+    // Holds the drink in front of the chest; every few seconds lifts it to the mouth.
+    const cycle = (t * 0.45 + ph) % 1;
+    const sip = cycle < 0.25 ? Math.sin((cycle / 0.25) * Math.PI) * m : 0;
+    right.rotation.x = -0.9 - sip * 1.25;
+    right.rotation.z = 0.45 * sip;
     left.rotation.x = -0.1;
-    c.head.rotation.x = -0.25 * sip;
+    c.head.rotation.x = -0.3 * sip;
     return;
   }
   if (state === 'chatting' || state === 'reporting') {
     // Talking with the hands: one arm gestures, the head nods along.
     c.hips.position.y = state === 'chatting' ? HIP_STAND : HIP_SIT;
-    left.rotation.x = state === 'chatting' ? -0.15 : -0.65;
+    left.rotation.x = state === 'chatting' ? -0.85 : -0.65; // chatting: water cup held in front
     right.rotation.x = -0.95 + Math.sin(t * 3.2 + ph) * 0.35 * m;
     right.rotation.z = -0.25;
     c.head.rotation.x = Math.sin(t * 2.4 + ph) * 0.08 * m;

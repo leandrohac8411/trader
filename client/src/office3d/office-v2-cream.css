@@ -132,8 +132,8 @@
 
 /* Agentes */
 .v2-agents ul{list-style:none;margin:0;padding:0}
-.office-app.ui-v2 .v2-agents button{width:100%;display:grid;grid-template-columns:10px 64px 1fr auto;align-items:center;gap:10px;border:0;background:none;padding:8px 6px;text-align:left;font-size:13px}
-.office-app.ui-v2 .v2-agents button:hover{background:var(--soft)}
+.office-app.ui-v2 .v2-agents li button{width:100%;display:grid;grid-template-columns:10px 64px 1fr auto;align-items:center;gap:10px;border:0;background:none;padding:8px 6px;text-align:left;font-size:13px}
+.office-app.ui-v2 .v2-agents li button:hover{background:var(--soft)}
 .v2-agents li+li{border-top:1px solid var(--line)}
 .v2-agents b{font-weight:700}
 .office-app.ui-v2 .v2-agents span{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -284,7 +284,7 @@
 .office-app.ui-v2 .v2-table .v2-dim{color:var(--muted)}
 .office-app.ui-v2 .v2-table td.up{color:var(--gain);font-weight:600}
 .office-app.ui-v2 .v2-table td.down{color:var(--loss);font-weight:600}
-.office-app.ui-v2 .v2-agents button{font-size:14px;padding:9px 6px}
+.office-app.ui-v2 .v2-agents li button{font-size:14px;padding:9px 6px}
 .office-app.ui-v2 .rail-nav button{height:48px;font-size:15px}
 .office-app.ui-v2 .v2-brand span{font-size:19px;font-weight:800}
 .office-app.ui-v2 .v2-brand svg{width:46px;height:38px}

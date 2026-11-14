@@ -52,6 +52,52 @@ export function reachedBreakeven({ side, entry, stop0, candles, openedAt, atR })
   return fav >= atR * risk;
 }
 
+export const PENDING_CLOSE_MS = 6 * 3_600_000;
+
+/** O fechamento da corretora que corresponde a esta posição (o mais recente depois da abertura). */
+export function matchClose(closed, open) {
+  const qty = Number(open?.qty);
+  return (closed || [])
+    .filter((x) => x.closedAt >= open.openedAt - 5_000)
+    .filter((x) => !(qty > 0) || !(x.qty > 0) || Math.abs(x.qty - qty) / qty < 0.02)
+    .sort((x, y) => y.closedAt - x.closedAt)[0] || null;
+}
+
+/** Linha do trade a partir da posição e do fechamento da corretora. */
+export function closeTradeLine({ symbol, tf, open, c }) {
+  const stop0 = open.stop0 ?? open.stop;
+  const qty = open.qty || c.qty;
+  const riskUsd = open.riskUsd > 0 ? open.riskUsd : qty * Math.abs(open.entry - stop0);
+  const pnl = c.closedPnl;
+  const exit = c.exit ?? null;
+  const reason = exit == null ? "unknown"
+    : Math.abs(exit - open.tp) < Math.abs(exit - open.stop) ? "tp"
+    : open.beMoved ? "be" : "stop";
+  const notional = qty * open.entry;
+  return {
+    symbol, tf, dir: open.side === "Buy" ? "LONG" : "SHORT", entry: open.entry, exit, stop: open.stop, tp: open.tp, reason,
+    netR: Number((riskUsd > 0 ? pnl / riskUsd : 0).toFixed(3)),
+    netPnlPct: notional > 0 ? Number(((pnl / notional) * 100).toFixed(3)) : 0,
+    pnlUsd: Number(pnl.toFixed(4)), probability: open.prob ?? null, openedAt: open.openedAt, closedAt: c.closedAt ?? Date.now(),
+  };
+}
+
+/** "unreconciled" dos últimos 3 dias que ainda não viraram trade: volta para a fila de pendentes. */
+export function backfillPending({ events = [], trades = [], now = Date.now() }) {
+  const out = [];
+  for (const u of events.filter((e) => e.type === "unreconciled" && e.ts > now - 3 * 86_400_000)) {
+    if (trades.some((t) => t.symbol === u.symbol && t.openedAt === u.openedAt)) continue;
+    const src = events.filter((e) => (e.type === "opened" || e.type === "adopted") && e.symbol === u.symbol && e.tf === u.tf && e.entry === u.entry)
+      .sort((a, b) => b.ts - a.ts)[0];
+    if (!src || out.some((p) => p.symbol === u.symbol && p.open.openedAt === u.openedAt)) continue;
+    const be = events.find((e) => e.type === "breakeven" && e.symbol === u.symbol && e.tf === u.tf && e.entry === u.entry && e.ts >= u.openedAt);
+    out.push({ symbol: u.symbol, tf: u.tf, since: now, open: { side: u.dir === "LONG" ? "Buy" : "Sell", entry: u.entry,
+      stop: be ? be.stop : src.stop, stop0: src.stop, beMoved: !!be, tp: src.tp,
+      qty: src.qty ?? null, riskUsd: src.riskUsd ?? null, prob: src.probability ?? null, openedAt: u.openedAt } });
+  }
+  return out;
+}
+
 /** Períodos que o tick percorre num ativo: os do perfil + os de posições ainda abertas (só para acompanhar). */
 export function tickTimeframes(symbol, timeframes, keys = {}) {
   const open = Object.entries(keys).filter(([k, v]) => v?.open && k.startsWith(`${symbol}|`)).map(([k]) => k.split("|")[1]);
@@ -369,6 +415,29 @@ export async function tickOnce() {
       appendEvent({ type: "adopted", symbol: a.symbol, tf: a.tf, dir: a.side === "Buy" ? "LONG" : "SHORT", entry: a.entry, stop: a.stop, tp: a.tp });
       log.push(`${a.key}: posição já aberta na corretora adotada (stop ${a.stop}, alvo ${a.tp})`);
     }
+    // Fechamentos que a corretora ainda não tinha publicado (e, uma vez, os "unreconciled" recentes).
+    if (!s.backfilledUnreconciled) {
+      s.pendingCloses = [...(s.pendingCloses || []), ...backfillPending({ events: readEvents(500), trades: readTrades(500), now: Date.now() })];
+      s.backfilledUnreconciled = true;
+    }
+    if (s.pendingCloses?.length) {
+      const still = [];
+      for (const p of s.pendingCloses) {
+        let c = null;
+        try { c = matchClose(await demo.getClosedPnl({ symbol: p.symbol, limit: 50 }), p.open); } catch { /* tenta na próxima */ }
+        if (c) {
+          const tradeLine = closeTradeLine({ symbol: p.symbol, tf: p.tf, open: p.open, c });
+          appendTrade(tradeLine);
+          appendEvent({ type: "closed", late: true, ...tradeLine });
+          log.push(`${p.symbol}|${p.tf}: fechamento encontrado depois — ${tradeLine.reason} pnl ${tradeLine.pnlUsd}`);
+        } else if (Date.now() - p.since > PENDING_CLOSE_MS) {
+          appendEvent({ type: "unreconciled", symbol: p.symbol, tf: p.tf, dir: p.open.side === "Buy" ? "LONG" : "SHORT",
+            entry: p.open.entry, openedAt: p.open.openedAt });
+          log.push(`${p.symbol}|${p.tf}: sem registro de fechamento depois de 6 h — trade não contabilizado`);
+        } else still.push(p);
+      }
+      s.pendingCloses = still;
+    }
     // conta posições REAIS na corretora, não só o que está no nosso estado
     let openCount = Math.max(positions.length, Object.values(s.keys).filter((k) => k.open).length);
     let opensThisTick = 0;
@@ -454,49 +523,20 @@ export async function tickOnce() {
           const sameSide = still && still.side === (ks.open.side);
           if (!sameSide) {
             try {
-              const closed = await demo.getClosedPnl({ symbol, limit: 10 });
-              const c = closed
-                .filter((x) => x.closedAt >= ks.open.openedAt - 5_000)
-                .sort((x, y) => y.closedAt - x.closedAt)[0];
-              if (!c) {
-                // Sem registro de fechamento na corretora (ex.: posição antiga fora do histórico
-                // consultado): não inventa um trade com resultado 0 — só registra o fato.
-                appendEvent({ type: "unreconciled", symbol, tf, dir: ks.open.side === "Buy" ? "LONG" : "SHORT",
-                  entry: ks.open.entry, openedAt: ks.open.openedAt });
-                log.push(`${key}: posição sumiu sem registro de fechamento — trade não contabilizado`);
-                throw Object.assign(new Error("sem fechamento"), { quiet: true });
+              const c = matchClose(await demo.getClosedPnl({ symbol, limit: 50 }), ks.open);
+              if (c) {
+                const tradeLine = closeTradeLine({ symbol, tf, open: ks.open, c });
+                appendTrade(tradeLine);
+                appendEvent({ type: "closed", ...tradeLine });
+                log.push(`${key}: FECHOU ${tradeLine.reason} netR ${tradeLine.netR} pnl ${tradeLine.pnlUsd}`);
+              } else {
+                // A Bybit às vezes demora a publicar o fechamento: tenta de novo nas próximas rodadas.
+                (s.pendingCloses ||= []).push({ symbol, tf, open: { ...ks.open }, since: Date.now() });
+                log.push(`${key}: posição fechou, aguardando o registro da corretora`);
               }
-              const pnl = c.closedPnl;
-              const netR = ks.open.riskUsd > 0 ? pnl / ks.open.riskUsd : 0;
-              const notional = ks.open.qty * ks.open.entry;
-              const exit = c?.exit ?? null;
-              const reason =
-                exit == null
-                  ? "unknown"
-                  : Math.abs(exit - ks.open.tp) < Math.abs(exit - ks.open.stop)
-                  ? "tp"
-                  : ks.open.beMoved ? "be" : "stop";
-              const tradeLine = {
-                symbol,
-                tf,
-                dir: ks.open.side === "Buy" ? "LONG" : "SHORT",
-                entry: ks.open.entry,
-                exit,
-                stop: ks.open.stop,
-                tp: ks.open.tp,
-                reason,
-                netR: Number(netR.toFixed(3)),
-                netPnlPct: notional > 0 ? Number(((pnl / notional) * 100).toFixed(3)) : 0,
-                pnlUsd: Number(pnl.toFixed(4)),
-                probability: ks.open.prob,
-                openedAt: ks.open.openedAt,
-                closedAt: c?.closedAt ?? Date.now(),
-              };
-              appendTrade(tradeLine);
-              appendEvent({ type: "closed", ...tradeLine });
-              log.push(`${key}: FECHOU ${reason} netR ${netR.toFixed(2)} pnl ${pnl.toFixed(2)}`);
             } catch (e) {
-              if (!e.quiet) log.push(`${key}: erro ao registrar fechamento ${e.message}`);
+              (s.pendingCloses ||= []).push({ symbol, tf, open: { ...ks.open }, since: Date.now() });
+              log.push(`${key}: erro ao registrar fechamento ${e.message} — tenta de novo`);
             }
             ks.open = null;
             ks.lastExitTs = Date.now();

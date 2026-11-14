@@ -245,3 +245,40 @@ test("adoptPositions adota posições da corretora que o estado não conhece", a
   assert.ok(Math.abs(o.riskUsd - 100 * (82.85 - 79.86)) < 1e-6);
   assert.equal(adoptPositions({ state, positions, symbols: ["ETHUSDT", "SOLUSDT"], timeframes: ["60", "240"] }).length, 0); // não adota duas vezes
 });
+
+test("matchClose e closeTradeLine: acha o fechamento depois da abertura, com a mesma quantidade", async () => {
+  const { matchClose, closeTradeLine } = await import("../src/services/bot.js");
+  const open = { side: "Sell", qty: 18.96, entry: 1911.33, stop: 1911.33, stop0: 1958.51, tp: 1817.75, riskUsd: 894.53, openedAt: 1000, beMoved: true };
+  const closed = [
+    { closedAt: 500, qty: 18.96, exit: 1900, closedPnl: 200 },       // antes da abertura
+    { closedAt: 2000, qty: 5, exit: 1911.4, closedPnl: -3 },          // outra quantidade
+    { closedAt: 3000, qty: 18.96, exit: 1911.4, closedPnl: -21.5 },
+  ];
+  const c = matchClose(closed, open);
+  assert.equal(c.closedAt, 3000);
+  const t = closeTradeLine({ symbol: "ETHUSDT", tf: "60", open, c });
+  assert.equal(t.reason, "be");
+  assert.equal(t.netR, Number((-21.5 / 894.53).toFixed(3)));
+  assert.equal(matchClose([], open), null);
+  // posição adotada (sem qty/riskUsd): risco pela quantidade do fechamento
+  const adopted = { side: "Sell", entry: 1952, stop: 1999.65, tp: 1879.21, openedAt: 1000 };
+  const t2 = closeTradeLine({ symbol: "ETHUSDT", tf: "240", open: adopted, c: { closedAt: 4000, qty: 18.18, exit: 1880, closedPnl: 1300 } });
+  assert.equal(t2.reason, "tp");
+  assert.ok(Math.abs(t2.netR - 1300 / (18.18 * 47.65)) < 0.001);
+});
+
+test("backfillPending: devolve os unreconciled recentes para a fila, sem repetir trade já registrado", async () => {
+  const { backfillPending } = await import("../src/services/bot.js");
+  const now = 10 * 86_400_000;
+  const events = [
+    { ts: now - 9000, type: "opened", symbol: "ETHUSDT", tf: "60", entry: 1911.33, stop: 1958.5, tp: 1817.75, qty: 18.96, riskUsd: 894.53, probability: 90 },
+    { ts: now - 5000, type: "breakeven", symbol: "ETHUSDT", tf: "60", entry: 1911.33, stop: 1911.33 },
+    { ts: now - 1000, type: "unreconciled", symbol: "ETHUSDT", tf: "60", dir: "SHORT", entry: 1911.33, openedAt: now - 9000 },
+    { ts: now - 1000, type: "unreconciled", symbol: "BNBUSDT", tf: "60", dir: "SHORT", entry: 610.1, openedAt: now - 8000 },
+    { ts: now - 9 * 86_400_000, type: "unreconciled", symbol: "XRPUSDT", tf: "60", dir: "SHORT", entry: 1, openedAt: 1 },
+  ];
+  const out = backfillPending({ events, trades: [], now });
+  assert.equal(out.length, 1); // BNB sem evento de abertura; XRP antigo demais
+  assert.deepEqual([out[0].open.stop, out[0].open.stop0, out[0].open.beMoved, out[0].open.qty], [1911.33, 1958.5, true, 18.96]);
+  assert.equal(backfillPending({ events, trades: [{ symbol: "ETHUSDT", openedAt: now - 9000 }], now }).length, 0);
+});

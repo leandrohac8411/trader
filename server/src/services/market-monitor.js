@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-export const WATCH_SYMBOLS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
+export const WATCH_SYMBOLS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT','ADAUSDT','AVAXUSDT','LINKUSDT','TRXUSDT'];
 export const WATCH_INTERVALS = ['1','5','15','60','240'];
 const decision = a => a.signal === 'LONG' ? 'Entrada de compra' : a.signal === 'SHORT' ? 'Entrada de venda' :
   a.stage === 'ready' ? 'Preparando' : a.stage === 'watch' ? 'Formando' : 'Aguardar';

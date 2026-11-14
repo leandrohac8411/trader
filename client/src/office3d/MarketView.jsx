@@ -2,7 +2,7 @@ import { useState } from 'react';
 import MarketRadar from './MarketRadar.jsx';
 import TraderChart from './TraderChart.jsx';
 
-const SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'];
+import { BOT_COINS as SYMBOLS } from './symbols.js';
 const INTERVALS = [['1', '1m'], ['5', '5m'], ['15', '15m'], ['60', '1h'], ['240', '4h']];
 
 // Aba Mercado: o radar da Alice em cima e o gráfico de velas reais logo abaixo.

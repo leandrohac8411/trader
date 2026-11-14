@@ -139,7 +139,8 @@ export function tickTimeframes(symbol, timeframes, keys = {}) {
 
 export const CFG = {
   enabled: process.env.DEMO_BOT === "1" && demo.demoConfigured(),
-  symbols: (process.env.BOT_SYMBOLS || "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT")
+  // 14/11/2026: top 10 por valor de mercado (3 anos de v3: ganhou do grupo de 5 em todos os anos; top 15 piorou)
+  symbols: (process.env.BOT_SYMBOLS || "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,LINKUSDT,TRXUSDT")
     .split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
   timeframes: (process.env.BOT_TIMEFRAMES || "60,240").split(",").map((s) => s.trim()).filter(Boolean),
   riskPct: Number(process.env.BOT_RISK_PCT || 1),

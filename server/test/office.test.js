@@ -150,13 +150,13 @@ test('serverless: scheduler flag goes stale without ticks, cycle marks it fresh,
   s=office.snapshot();
   assert.equal(s.scheduler.stale,false);
   assert.ok(s.scheduler.lastTickAt);
-  assert.equal(s.monitor.items.length,5);
+  assert.equal(s.monitor.items.length,10);
   const before=scans;
   assert.deepEqual(await office.refreshRadar(),{fresh:true}); // acabou de ler: não lê de novo
   assert.equal(scans,before);
   const later=await office.refreshRadar(Date.now()+10*60_000);
-  assert.equal(later.scanned,5);
-  assert.equal(scans,before+5);
+  assert.equal(later.scanned,10);
+  assert.equal(scans,before+10);
   assert.equal(office.snapshot().scheduler.lastTickAt,s.scheduler.lastTickAt); // refresh não conta como tick
 });
 test('non-serverless snapshot has no scheduler block',t=>{

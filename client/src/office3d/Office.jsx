@@ -1,3 +1,4 @@
+import { BOT_COINS } from './symbols.js';
 import { useEffect, useRef, useState } from 'react';
 import OfficeScene from './OfficeScene.jsx';
 import useOffice from './useOffice.js';
@@ -69,7 +70,7 @@ function MoodMeter({mood}) {
 }
 
 function MarketInputs({symbol,onSymbol,interval,onInterval}) {
-  return <div className="task-inputs"><label>Mercado<select value={symbol} onChange={e=>onSymbol(e.target.value)}>{['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'].map(s=><option key={s}>{s}</option>)}</select></label><label>Período<select value={interval} onChange={e=>onInterval(e.target.value)}><option value="60">1 hora</option><option value="240">4 horas</option></select></label></div>;
+  return <div className="task-inputs"><label>Mercado<select value={symbol} onChange={e=>onSymbol(e.target.value)}>{BOT_COINS.map(s=><option key={s}>{s}</option>)}</select></label><label>Período<select value={interval} onChange={e=>onInterval(e.target.value)}><option value="60">1 hora</option><option value="240">4 horas</option></select></label></div>;
 }
 
 function Result({result}) {

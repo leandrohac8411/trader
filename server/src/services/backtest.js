@@ -46,6 +46,9 @@ export function runBacktest(candles, opts = {}) {
     // corta a perda cedo (como o trader manual): vela FECHADA contra a posição com corpo >= X ATR
     // → o stop aproxima para o fechamento dela ± 0,5 ATR (só aperta, nunca afasta), a partir da vela seguinte.
     tightenOnAdverseAtr = null,
+    // igual ao Ricardo (approval.js): não entra com stop a mais de X% da entrada. Sem isso, num crash
+    // (10/10/2025) o simulador abria vendas com stop a 35% que ficavam meses abertas e travavam a moeda.
+    maxStopPct = 15,
     meta = {},
   } = opts;
 
@@ -219,7 +222,7 @@ export function runBacktest(candles, opts = {}) {
       const dir = ev.signal === "LONG" ? 1 : -1;
       const entry = open[i + 1];
       const risk = Math.abs(entry - ev.levels.stop);
-      if (risk > 1e-9) {
+      if (risk > 1e-9 && (!maxStopPct || (risk / entry) * 100 <= maxStopPct)) {
         pos = {
           entryIdx: i + 1,
           signal: ev.signal,
@@ -332,7 +335,7 @@ export function runBacktest(candles, opts = {}) {
         slippagePct,
         riskPerTradePct,
         warmup,
-        exit: { exitOnReverse, breakevenAfterTp1, trailAtr, singleTarget, breakevenAtR, tightenOnAdverseAtr },
+        exit: { exitOnReverse, breakevenAfterTp1, trailAtr, singleTarget, breakevenAtR, tightenOnAdverseAtr, maxStopPct },
       },
     },
     trades: tradeStats,

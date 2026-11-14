@@ -3,12 +3,13 @@
 // no máximo uma consulta a cada 25 s, e só com a aba visível.
 import { useEffect, useState } from 'react';
 import { API } from '../services/api.js';
+import { BOT_COINS } from './symbols.js';
 
 let last = { at: 0, data: null, pending: null };
 async function load() {
   if (last.pending) return last.pending;
   if (last.data && Date.now() - last.at < 25_000) return last.data;
-  last.pending = Promise.all([API.get('/api/bybit/tickers?top=10'), API.get('/api/bybit/tickers')]).then(([top, bot]) => {
+  last.pending = Promise.all([API.get('/api/bybit/tickers?top=10'), API.get('/api/bybit/tickers?symbols=' + BOT_COINS.join(','))]).then(([top, bot]) => {
     const list = [...(top.data || [])];
     for (const t of bot.data || []) if (!list.some(x => x.symbol === t.symbol)) list.push(t);
     const data = { list, top: (top.data || []).map(t => t.symbol), bySymbol: Object.fromEntries(list.map(t => [t.symbol, t])) };

@@ -172,3 +172,14 @@ test("tightenOnAdverseAtr: vela forte contra aproxima o stop (só aperta) e perd
   assert.equal(cut.meta.params.exit.tightenOnAdverseAtr, 1);
   assert.deepEqual(cut, runBacktest(cs, { ...opts, tightenOnAdverseAtr: 1 }));
 });
+
+test("maxStopPct: não abre trade com stop longe demais (como o Ricardo no bot)", () => {
+  const cs = series((i) => 100 + i * 0.5 + 10 * Math.sin(i / 7), 400);
+  const opts = { warmup: 60, minProbEntry: 0, singleTarget: true, rr1: 2 };
+  const all = runBacktest(cs, { ...opts, maxStopPct: null });
+  const capped = runBacktest(cs, { ...opts, maxStopPct: 2 });
+  const pct = (t) => (Math.abs(t.entry - t.initStop) / t.entry) * 100;
+  assert.ok(all.tradeList.some((t) => pct(t) > 2), "a série precisa ter stops largos");
+  assert.ok(capped.tradeList.every((t) => pct(t) <= 2 + 1e-9));
+  assert.equal(runBacktest(cs, opts).meta.params.exit.maxStopPct, 15);
+});

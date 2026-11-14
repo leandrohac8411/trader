@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
-import { createMarketMonitor } from '../src/services/market-monitor.js';
+import { createMarketMonitor, WATCH_SYMBOLS } from '../src/services/market-monitor.js';
 
 const signal=(side='LONG')=>({price:100,probability:88,signal:side,stage:side==='NEUTRAL'?'watch':'go'});
 
-test('scans all five original watchlist markets without a browser or trading client',async()=>{
+test('scans every watchlist market (the ten bot coins) without a browser or trading client',async()=>{
   const calls=[];
   const m=createMarketMonitor({analyze:async q=>{calls.push(q);return signal();}});
   await m.scan();
-  assert.equal(calls.length,5);assert.ok(calls.every(q=>q.interval==='1'&&q.limit==='300'));
-  assert.equal(m.snapshot().items.length,5);assert.equal(m.snapshot().scanCount,1);
+  assert.equal(calls.length,WATCH_SYMBOLS.length);assert.equal(WATCH_SYMBOLS.length,10);assert.ok(calls.every(q=>q.interval==='1'&&q.limit==='300'));
+  assert.equal(m.snapshot().items.length,WATCH_SYMBOLS.length);assert.equal(m.snapshot().scanCount,1);
 });
 test('unchanged signals are deduplicated; a withdrawn entry is explicitly reported',async()=>{
   let side='LONG';const events=[];

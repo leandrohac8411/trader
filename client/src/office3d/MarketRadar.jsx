@@ -1,3 +1,4 @@
+import { BOT_COINS } from './symbols.js';
 import { useEffect, useState } from 'react';
 
 export default function MarketRadar({monitor,connected,onInterval,onSelect,notifications,onNotifications}) {
@@ -9,7 +10,7 @@ export default function MarketRadar({monitor,connected,onInterval,onSelect,notif
     !item.stale&&!item.error&&item.symbol===alert.symbol&&item.interval===alert.interval&&item.signal===alert.signal&&now-Date.parse(item.updatedAt)<monitor.scanMs*2)):null;
   const latest=activeAlert||monitor?.alerts?.[0];
   const status=!connected?'Sem conexão':!monitor?.enabled?'Iniciando monitoramento':monitor.running?'Analisando o mercado':seconds==null?'Aguardando a próxima leitura':seconds>90?`Próxima leitura em ~${Math.ceil(seconds/60)} min`:seconds>0?`Próxima leitura em ${seconds}s`:'Lendo o mercado…';
-  const symbols=monitor?.symbols||['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
+  const symbols=monitor?.symbols||BOT_COINS;
   async function change(e){setError('');try{await onInterval(e.target.value);}catch(err){setError(err.message);}}
   return <section className="market-radar" aria-label="Monitoramento automático de sinais">
     <div className="radar-heading"><div><i className={connected&&monitor?.enabled?'radar-live':''}/><h2>Alice está de olho no mercado</h2><span><span className="caps">Monitoramento automático</span></span></div>

@@ -197,7 +197,7 @@ app.get("/api/bybit/tickers", async (req, res) => {
       const names = Object.fromEntries(ranked.map((r) => [r.symbol, r.name]));
       return res.json({ data: ticks.map((t) => ({ ...t, name: names[t.symbol] })) });
     }
-    const symbols = String(req.query.symbols || "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT").toUpperCase().split(",").filter((s) => /^[A-Z0-9]{2,20}$/.test(s)).slice(0, 20);
+    const symbols = String(req.query.symbols || "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,LINKUSDT,TRXUSDT").toUpperCase().split(",").filter((s) => /^[A-Z0-9]{2,20}$/.test(s)).slice(0, 20);
     res.json({ data: await getTickers(symbols) });
   } catch (e) {
     res.status(e.status && e.status < 500 ? e.status : 500).json({ error: e.message || String(e) });

@@ -15,12 +15,14 @@ const STUDENT_LOOKS = {
   antigo: { skin: '#d8a47f', hair: '#9a9a9a', hairStyle: 'short', jacket: '#9aa7ad' },
   quatro: { skin: '#b97e57', hair: '#2a1a12', hairStyle: 'bob', jacket: '#6fd3e0' },
   quatro3: { skin: '#f1c7a1', hair: '#3a2a1c', hairStyle: 'swept', jacket: '#e0c36f' },
+  empate: { skin: '#d9a07a', hair: '#6b2f1f', hairStyle: 'long', jacket: '#9fd8c4' },
 };
-// 3 fileiras × 3 carteiras: a turma do bot na frente.
+// 3 fileiras × 3 carteiras (a turma do bot na frente) + a Vera no fundo, à direita.
 const SEATS = [
   ['base', -2.4, 3.5], ['antigo', 0.3, 3.5], ['alvo', 3.0, 3.5],
   ['quatro', -2.4, 5.3], ['quatro3', 0.3, 5.3], ['rapido', 3.0, 5.3],
   ['curto', -2.4, 7.1], ['lento', 0.3, 7.1], ['largo', 3.0, 7.1],
+  ['empate', 3.0, 8.7],
 ];
 const STATUS_COLOR = { aprovado: '#4ade80', aguardando: '#fbbf24', amostra: '#94a3b8', reprovado: '#ef4444', 'reprovado-prova': '#f97316' };
 const YAW = -Math.PI / 2; // students face -X, towards the board

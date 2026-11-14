@@ -40,6 +40,9 @@ export function runBacktest(candles, opts = {}) {
     breakevenAfterTp1 = false,
     trailAtr = null,
     singleTarget = false,
+    // stop no empate: quando o preço andou X R a favor (máxima/mínima de uma vela FECHADA),
+    // o stop vai para a entrada a partir da vela seguinte. Sem olhar o futuro dentro da vela.
+    breakevenAtR = null,
     meta = {},
   } = opts;
 
@@ -137,7 +140,9 @@ export function runBacktest(candles, opts = {}) {
       } else if (singleTarget && hitTp1) {
         exitPrice = pos.tp1;
         reason = "tp1";
-      } else if (hitTp2) {
+      } else if (!singleTarget && hitTp2) {
+        // alvo único (como o bot): o TP2 não existe. Com rr1 3 e rr2 2,5 ele ficava ANTES do alvo
+        // e fechava como ganho em 2,5R trades que no bot seguiriam abertos.
         exitPrice = pos.tp2;
         reason = "tp2";
       } else if (hitTp1 && !breakevenAfterTp1) {
@@ -151,6 +156,11 @@ export function runBacktest(candles, opts = {}) {
       } else if (reversed) {
         exitPrice = close[j];
         reason = "reverse";
+      }
+      if (exitPrice == null && breakevenAtR && !pos.beMoved && pos.mfe >= breakevenAtR) {
+        pos.stop = pos.entry;
+        pos.beMoved = true;
+        pos.stopReason = "be";
       }
 
       if (exitPrice != null) {
@@ -166,6 +176,7 @@ export function runBacktest(candles, opts = {}) {
           entry: round(pos.entry, 6),
           exit: round(exitPrice, 6),
           stop: round(pos.stop, 6),
+          initStop: round(pos.stop0, 6),
           reason,
           grossR: round(grossR, 3),
           netR: round(netR, 3),
@@ -202,6 +213,7 @@ export function runBacktest(candles, opts = {}) {
           dir,
           entry,
           stop: ev.levels.stop,
+          stop0: ev.levels.stop, // stop da entrada (o `stop` pode andar: empate, trailing)
           tp1: ev.levels.tp1,
           tp2: ev.levels.tp2,
           risk,
@@ -307,7 +319,7 @@ export function runBacktest(candles, opts = {}) {
         slippagePct,
         riskPerTradePct,
         warmup,
-        exit: { exitOnReverse, breakevenAfterTp1, trailAtr, singleTarget },
+        exit: { exitOnReverse, breakevenAfterTp1, trailAtr, singleTarget, breakevenAtR },
       },
     },
     trades: tradeStats,

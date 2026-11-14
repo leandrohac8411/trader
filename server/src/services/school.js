@@ -18,6 +18,7 @@ export const PARAM_BOUNDS = {
   emaFast: [5, 60],
   emaSlow: [20, 200],
   lookback: [3, 20],
+  breakevenAtR: [0.5, 3],
 };
 
 // Os parâmetros de cada aluno se somam aos do bot (perfil v2: score ≥ 90, alvo 3R, SuperTrend 4).
@@ -32,6 +33,7 @@ export const STUDENTS = [
   { id: "curto", name: "Duda", emoji: "🎯", color: "#ff8fb1", style: "Alvo curto, 1,5R", params: { rr1: 1.5 } },
   { id: "lento", name: "Nina", emoji: "🐢", color: "#c7a0ff", style: "Médias lentas (EMA 30/100)", params: { emaFast: 30, emaSlow: 100 } },
   { id: "largo", name: "Theo", emoji: "🧱", color: "#ffa66b", style: "Stop no swing de 10 velas", params: { lookback: 10 } },
+  { id: "empate", name: "Vera", emoji: "🛡️", color: "#9fd8c4", style: "Igual ao bot, mas sobe o stop para a entrada quando chega a 50% do alvo (1,5R)", params: { breakevenAtR: 1.5 } },
 ];
 
 // Troca de turma (13/11/2026: bot passou ao perfil v2). Mudar a turma zera o papel:

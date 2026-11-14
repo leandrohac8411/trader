@@ -69,7 +69,8 @@ export async function collectTrades(costs = {}, params = {}, tfs = TFS) {
       out.push({
         symbol, tf, dir: t.dir, netR: t.netR, reason: t.reason,
         openTs: c[t.entryIdx].ts, closeTs: c[t.exitIdx].ts,
-        stopPct: Math.abs(t.entry - t.stop) / t.entry,
+        // tamanho pela distância do stop NA ENTRADA (o stop final pode estar na entrada ou em lucro)
+        stopPct: Math.abs(t.entry - (t.initStop ?? t.stop)) / t.entry,
       });
     }
   }

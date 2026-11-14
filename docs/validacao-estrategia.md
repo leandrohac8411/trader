@@ -94,3 +94,28 @@ Cada "ano" sorteia 481 trades (com reposição) entre os trades da carteira, com
 - O bot demo passou ao **perfil v2**: 1h+4h, score ≥ 90, alvo 3R, SuperTrend 4 (`BOT_PROFILE=v2`, padrão). O perfil antigo continua disponível como `BOT_PROFILE=v1`; `BOT_PROFILE=custom` usa `BOT_MIN_PROB`, `BOT_RR1` e `BOT_ST_MULT`.
 - A escola ganhou uma turma nova (papel zerado em 13/11): o bot atual (Bia), o bot antigo (Rafa) e as candidatas 1h alvo 2R (Hugo), 4h alvo 2R ST 3 (Lia) e 4h alvo 3R ST 3 (Gil), além das variações de sempre.
 - Critério antes de pensar em dinheiro real: ~30 trades da nova rodada na demo e a validação rodada de novo com os dados novos.
+
+## Correção do simulador (13/11/2026, noite)
+
+Dois erros no backtest inflavam a configuração escolhida acima:
+
+1. **TP2 antes do alvo.** No modo de alvo único (o que o bot usa), o simulador ainda olhava o TP2. Como o padrão é `rr2 = 2,5`, com alvo de 3R o TP2 ficava **antes** do alvo, e trades que tocavam 2,5R saíam como ganho, quando no bot (só TP1 na Bybit) eles continuariam abertos e poderiam voltar ao stop. Corrigido: com alvo único, só stop ou alvo.
+2. **Tamanho da posição pelo stop final.** A carteira calculava o tamanho pela distância do stop **no fim** do trade. Quando o stop anda (empate, trailing), isso distorcia o resultado. Corrigido: o trade guarda `initStop` e o tamanho usa o stop da entrada.
+
+As 162 variações foram rodadas de novo (108 de antes + stop no empate em 1,5R):
+
+| Variação | Treino 2023–25: trades · por trade · 95% | Teste 2026: trades · por trade · 95% | Total 3 anos | Maior queda |
+|---|---|---|---|---|
+| **Bot atual: 1h+4h · alvo 3R · score ≥ 90 · ST 4** | 437 · +0,076 R · −0,09 a +0,24 | 186 · +0,032 R · −0,22 a +0,29 | +2% | −28% |
+| Bot atual + stop no empate em 1,5R | 519 · +0,066 R · −0,07 a +0,21 | 210 · +0,156 R · −0,07 a +0,38 | +21% | −22% |
+| 1h · alvo 2R · score ≥ 90 · ST 4 | 669 · +0,092 R · −0,02 a +0,20 | 270 · +0,138 R · −0,04 a +0,31 | +62% | −23% |
+| 1h · alvo 2R · score ≥ 90 · ST 4 · empate 1,5R | 678 · +0,115 R · +0,01 a +0,22 | 283 · +0,130 R · −0,03 a +0,29 | +74% | −22% |
+| 1h · alvo 3R · score ≥ 90 · ST 4 · empate 1,5R | 548 · +0,154 R · +0,01 a +0,29 | 232 · +0,078 R · −0,13 a +0,29 | +51% | −24% |
+| 4h · alvo 2R · score ≥ 90 · ST 3 | 204 · +0,134 R · −0,07 a +0,34 | 86 · +0,260 R · −0,05 a +0,58 | +51% | −22% |
+| Perfil antigo (v1): 1h+4h · alvo 1,5R · score ≥ 85 · ST 3 | 1109 · −0,029 R | 347 · −0,005 R | −9% | −29% |
+
+**Leitura honesta:**
+- O perfil v2 do bot continua melhor que o antigo, mas é bem mais fraco do que parecia: **+2% em 3 anos**, praticamente empate.
+- O **stop no empate** ajudou nas versões de 1h e foi a única regra com o intervalo de 95% acima de zero no treino (duas variações). No teste de 2026 ainda não há nada comprovado.
+- Alvo de 2R em 1h aparece de novo entre as mais consistentes (treino e teste parecidos).
+- A escola ganhou a **Vera** (bot atual + stop no empate em 1,5R) para acompanhar no papel.

@@ -140,3 +140,11 @@ test("readPromotion só devolve parâmetros saneados quando pronto", async () =>
     assert.deepEqual(readPromotion(dataDir).params, { minProbEntry: 75 });
   } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });
+
+test("Vera: o aluno do stop no empate passa a regra para o simulador", async () => {
+  const { STUDENTS, sanitizeParams } = await import("../src/services/school.js");
+  const vera = STUDENTS.find((s) => s.id === "empate");
+  assert.ok(vera);
+  assert.deepEqual(sanitizeParams(vera.params), { breakevenAtR: 1.5 });
+  assert.deepEqual(sanitizeParams({ breakevenAtR: 99 }), { breakevenAtR: 3 }); // limitado
+});

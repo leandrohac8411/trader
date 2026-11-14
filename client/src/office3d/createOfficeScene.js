@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createKit, makeCanvas, canvasPanel, textSprite, roundRect, rng } from './voxel.js';
 import { LOOKS, buildCharacter, pose, buildDog, createDogWalker } from './people.js';
 import { buildSchool } from './school3d.js';
+import logoUrl from './assets/logo-v2.webp';
 import { routeTo, canWalk, facts, reportLines, gossipLines, drinkLine, COOLER, MACHINES } from './errands.js';
 
 // Person position on the floor; ry rotates the station so that ry=0 faces -Z (towards the back wall).
@@ -33,6 +34,8 @@ export const CAMERAS = [
 const TOUR = ['cam02', 'cam06', 'cam05', 'cam03', 'cam07', 'cam10', 'cam11', 'cam09', 'cam04', 'cam08', 'cam01'];
 const FOCUS = { ceo: 'cam03', risk: 'cam04', trader: 'cam05', analyst: 'cam06', scientist: 'cam08', auditor: 'cam08' };
 const TOUR_MS = 7000;
+// De dia (visual 2) não há cidade: a vista geral fica mais perto, como uma maquete.
+const DAY_CAM = { cam01: { target: [0, 0, 0], offset: [30, 30, 36], zoom: 0.72 }, cam02: { target: [-0.5, 0.9, -1.2], offset: [24, 22, 30], zoom: 1.16 } };
 
 const UP = new THREE.Vector3(0, 1, 0);
 // Lucas's walk from his desk to the lounge sofa (aisles only), ending seated facing the TV.
@@ -43,12 +46,17 @@ const MOOD_COLOR = { perigo: '#ef4444', alerta: '#f59e0b', normal: '#2dd4bf', co
 const STAGE_COLOR ={ go: '#4ade80', ready: '#fb923c', watch: '#fbbf24', none: '#7b8a96' };
 const money = v => `${v < 0 ? '−' : '+'}US$ ${Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export function createOfficeScene(host, { onSelect, onProject, onReady, onError, onCamera }) {
+// Tema: 'night' (cidade à noite, visual 1) ou 'day' (luz do dia, tons creme; visual 2).
+let DAY = false;
+const T = (night, day) => (DAY ? day : night);
+
+export function createOfficeScene(host, { onSelect, onProject, onReady, onError, onCamera, theme = 'night' }) {
+  DAY = theme === 'day';
   const kit = createKit();
   const { box, group } = kit;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#0b1322');
-  scene.fog = new THREE.Fog('#0b1322', 95, 210);
+  scene.background = new THREE.Color(T('#0b1322', '#efe6d6'));
+  scene.fog = new THREE.Fog(T('#0b1322', '#efe6d6'), T(95, 110), T(210, 260));
 
   const camera = new THREE.OrthographicCamera(-15, 15, 12, -12, 0.1, 500);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -57,7 +65,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = T(1.15, 1.02);
   renderer.domElement.setAttribute('aria-label', 'Escritório 3D em blocos na cobertura de um prédio. Use os botões dos agentes para selecionar.');
   host.appendChild(renderer.domElement);
 
@@ -76,19 +84,19 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
   }
 
   // ── Lights ────────────────────────────────────────────────────────────────
-  scene.add(new THREE.HemisphereLight('#b7c7e6', '#1d2534', 1.6));
-  const key = new THREE.DirectionalLight('#fff1dc', 2.7);
+  scene.add(new THREE.HemisphereLight(T('#b7c7e6', '#fff7e8'), T('#1d2534', '#cdbb9c'), T(1.6, 2.1)));
+  const key = new THREE.DirectionalLight(T('#fff1dc', '#fff0d6'), T(2.7, 2.9));
   key.position.set(8, 22, 12);
   key.castShadow = true;
   Object.assign(key.shadow.camera, { left: -16, right: 16, top: 14, bottom: -14, near: 1, far: 60 });
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.normalBias = 0.03;
   scene.add(key);
-  const fill = new THREE.DirectionalLight('#7fa5d8', 0.9);
+  const fill = new THREE.DirectionalLight(T('#7fa5d8', '#ffe2b8'), T(0.9, 0.7));
   fill.position.set(-14, 10, -8);
   scene.add(fill);
 
-  buildCity(kit, scene);
+  if (!DAY) buildCity(kit, scene);
   buildFloor(kit, scene);
   const school = buildSchool(kit, scene);
 
@@ -295,6 +303,7 @@ export function createOfficeScene(host, { onSelect, onProject, onReady, onError,
   // ── Cameras: presets, smooth moves, follow and tour ─────────────────────
   let activeCam = null, anim = null, tourOn = false, tourAt = 0;
   const presetGoal = preset => {
+    if (DAY && DAY_CAM[preset.id]) preset = { ...preset, ...DAY_CAM[preset.id] };
     const target = preset.follow === 'dog' ? dogPos.clone().add(new THREE.Vector3(0, 0.9, 0)) : new THREE.Vector3(...preset.target);
     return { target, pos: target.clone().add(new THREE.Vector3(...preset.offset)), zoom: preset.zoom };
   };
@@ -655,17 +664,32 @@ function buildFloor(kit, scene) {
   const { box } = kit;
   // Slab + building body (with lit windows) below the office floor.
   box(scene, [24.6, 0.4, 18.6], [0, -0.2, 0], '#cfd5da');
-  const tower = new THREE.Mesh(new THREE.BoxGeometry(26, 40, 20), windowMaterials(kit, 26, 40, 3));
-  tower.position.set(0, -20.42, 0);
-  scene.add(tower);
+  if (DAY) {
+    // maquete: base de madeira clara em vez do prédio
+    box(scene, [25, 0.9, 19], [0, -0.85, 0], '#d9c3a0');
+    box(scene, [25.4, 0.12, 19.4], [0, -1.32, 0], '#bfa47c');
+  } else {
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(26, 40, 20), windowMaterials(kit, 26, 40, 3));
+    tower.position.set(0, -20.42, 0);
+    scene.add(tower);
+  }
   floorPlane(scene, 24, 18, [0, 0.005, 0], tileTexture());
   floorPlane(scene, 7, 6.5, [-8.5, 0.012, -5.75], plankTexture());
-  floorPlane(scene, 7, 7.5, [-8.5, 0.012, 5.25], null, '#3b4660');
-  floorPlane(scene, 5.4, 3.6, [7.6, 0.012, 6.1], null, '#4b5d78');
+  floorPlane(scene, 7, 7.5, [-8.5, 0.012, 5.25], DAY ? plankTexture() : null, '#3b4660');
+  floorPlane(scene, 5.4, 3.6, [7.6, 0.012, 6.1], null, T('#4b5d78', '#e3cfae'));
 
   // Outer glass walls (back and left); front and right stay open as a cutaway.
-  glassRun(kit, scene, [-12, -9], [12, -9], 3.6);
-  glassRun(kit, scene, [-12, -9], [-12, 9], 3.6);
+  if (DAY) {
+    // paredes de fundo opacas, cor de areia, com rodapé de madeira e a marca dourada
+    box(scene, [24.2, 3.6, 0.2], [0, 1.8, -9.1], '#efe4d2');
+    box(scene, [0.2, 3.6, 18.2], [-12.1, 1.8, 0], '#ebdfcb');
+    box(scene, [24.2, 0.22, 0.24], [0, 0.11, -8.98], '#b48a5c');
+    box(scene, [0.24, 0.22, 18.2], [-11.98, 0.11, 0], '#b48a5c');
+    brandPlaque(scene);
+  } else {
+    glassRun(kit, scene, [-12, -9], [12, -9], 3.6);
+    glassRun(kit, scene, [-12, -9], [-12, 9], 3.6);
+  }
   // Diretoria and risk-room partitions, with door gaps.
   glassRun(kit, scene, [-5, -9], [-5, -4.6], 3.2);
   glassRun(kit, scene, [-12, -2.5], [-7.2, -2.5], 3.2);
@@ -717,7 +741,7 @@ function buildFloor(kit, scene) {
 
 function buildCity(kit, scene) {
   const rand = rng(20261110);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), new THREE.MeshStandardMaterial({ color: '#171e2b', roughness: 1 }));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), new THREE.MeshStandardMaterial({ color: T('#171e2b', '#d9cfbd'), roughness: 1 }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -40.4;
   scene.add(ground);
@@ -735,10 +759,10 @@ function buildCity(kit, scene) {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), windowMaterials(kit, w, h, Math.floor(rand() * 3)));
     mesh.position.set(x + (rand() - 0.5) * 1.5, -40.4 + h / 2, z + (rand() - 0.5) * 1.5);
     scene.add(mesh);
-    if (rand() < 0.5) kit.box(scene, [w * 0.3, 1, d * 0.3], [mesh.position.x, -40.4 + h + 0.5, mesh.position.z], '#3a4352', {}, { shadow: false });
+    if (rand() < 0.5) kit.box(scene, [w * 0.3, 1, d * 0.3], [mesh.position.x, -40.4 + h + 0.5, mesh.position.z], T('#3a4352', '#cbbfa9'), {}, { shadow: false });
     if (!tallest || h > tallest.h) tallest = { h, x: mesh.position.x, z: mesh.position.z };
   }
-  if (tallest) {
+  if (tallest && !DAY) {
     kit.box(scene, [0.3, 3, 0.3], [tallest.x, -40.4 + tallest.h + 1.5, tallest.z], '#4a5262', {}, { shadow: false });
     const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 8),
       new THREE.MeshStandardMaterial({ color: '#ff4040', emissive: '#ff2020', emissiveIntensity: 2 }));
@@ -749,7 +773,7 @@ function buildCity(kit, scene) {
 }
 
 function park(kit, scene, x, z, rand) {
-  kit.box(scene, [8, 0.2, 8], [x, -40.3, z], '#24432f', {}, { shadow: false });
+  kit.box(scene, [8, 0.2, 8], [x, -40.3, z], T('#24432f', '#9fbf86'), {}, { shadow: false });
   for (let i = 0; i < 5; i++) {
     const tx = x + (rand() - 0.5) * 6, tz = z + (rand() - 0.5) * 6, s = 0.8 + rand() * 0.8;
     kit.box(scene, [0.4 * s, 1.4 * s, 0.4 * s], [tx, -40.2 + 0.7 * s, tz], '#5b4130', {}, { shadow: false });
@@ -759,21 +783,22 @@ function park(kit, scene, x, z, rand) {
 
 const windowCache = new Map();
 function windowTexture(variant) {
-  if (windowCache.has(variant)) return windowCache.get(variant);
+  const id = `${DAY ? 'd' : 'n'}${variant}`;
+  if (windowCache.has(id)) return windowCache.get(id);
   const rand = rng(77 + variant);
   const c = makeCanvas(128, 256), ctx = c.getContext('2d');
-  ctx.fillStyle = ['#2a3344', '#323a48', '#263040'][variant];
+  ctx.fillStyle = DAY ? ['#e8dcc6', '#d9cdb8', '#efe7d8', '#e2d4bb'][variant] : ['#2a3344', '#323a48', '#263040'][variant];
   ctx.fillRect(0, 0, 128, 256);
   for (let y = 0; y < 16; y++) for (let x = 0; x < 8; x++) {
     const lit = rand() < 0.38;
-    ctx.fillStyle = lit ? (rand() < 0.8 ? '#ffd68a' : '#cfe6ff') : '#151b26';
+    ctx.fillStyle = DAY ? (lit ? '#a9c4d6' : '#8eaec4') : lit ? (rand() < 0.8 ? '#ffd68a' : '#cfe6ff') : '#151b26';
     ctx.fillRect(x * 16 + 3, y * 16 + 4, 10, 9);
   }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.magFilter = THREE.NearestFilter;
-  windowCache.set(variant, tex);
+  windowCache.set(id, tex);
   return tex;
 }
 
@@ -782,9 +807,9 @@ function windowMaterials(kit, w, h, variant) {
     const tex = windowTexture(variant).clone();
     tex.repeat.set(Math.max(1, Math.round(width / 5)), Math.max(1, Math.round(h / 10)));
     tex.needsUpdate = true;
-    return new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: '#ffffff', emissiveIntensity: 0.55, roughness: 0.9 });
+    return new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: '#ffffff', emissiveIntensity: DAY ? 0 : 0.55, roughness: 0.9 });
   };
-  const roof = kit.material('#2f3644');
+  const roof = kit.material(T('#2f3644', '#c9bda6'));
   const a = side(w), b = side(w);
   return [b, b, roof, roof, a, a];
 }
@@ -825,11 +850,27 @@ function floorPlane(scene, w, d, [x, y, z], texture, color = '#ffffff') {
   if (texture) texture.repeat.set(w / 2, d / 2);
 }
 
+function brandPlaque(scene) {
+  // placa clara com a logo, na parede esquerda da diretoria, de frente para a sala
+  const c = makeCanvas(1024, 368), ctx = c.getContext('2d');
+  ctx.fillStyle = '#fbf6ec';
+  ctx.fillRect(0, 0, 1024, 368);
+  const p = canvasPanel(scene, 4.4, 1.58, [-11.97, 2.45, -5.8], c);
+  p.mesh.rotation.y = Math.PI / 2;
+  const img = new Image();
+  img.onload = () => {
+    const k = Math.min(980 / img.width, 340 / img.height), w = img.width * k, h = img.height * k;
+    ctx.drawImage(img, (1024 - w) / 2, (368 - h) / 2, w, h);
+    p.texture.needsUpdate = true;
+  };
+  img.src = logoUrl;
+}
+
 function tileTexture() {
   const c = makeCanvas(128, 128), ctx = c.getContext('2d');
-  ctx.fillStyle = '#e4e8eb';
+  ctx.fillStyle = DAY ? '#f1ebe1' : '#e4e8eb';
   ctx.fillRect(0, 0, 128, 128);
-  ctx.strokeStyle = '#cdd3d8';
+  ctx.strokeStyle = DAY ? '#e2d8c7' : '#cdd3d8';
   ctx.lineWidth = 3;
   ctx.strokeRect(0, 0, 128, 128);
   const tex = new THREE.CanvasTexture(c);

@@ -23,7 +23,7 @@ export function GoalsStrip({ game, mood }) {
   const today = mood?.today || { wins: 0, losses: 0 };
   return <section className="goals-strip" aria-label="Placar, regra e metas">
     <div className="goal-card">
-      <span className="goal-eyebrow">PLACAR DE HOJE</span>
+      <span className="goal-eyebrow"><span className="caps">Placar de hoje</span></span>
       <strong className="goal-big">{today.wins}V · {today.losses}D</strong>
       <small>trades registrados pelo bot demo (dia UTC)</small>
     </div>
@@ -34,7 +34,7 @@ export function GoalsStrip({ game, mood }) {
       <small>{ladder.appliedToBot ? 'Aplicada ao bot demo (BOT_LADDER=1).' : 'Só no placar: o bot usa o risco base. Ative com BOT_LADDER=1.'} Ou queda de {ladder.ddDownPct}% desce um degrau. Teto: 2× a base.</small>
     </div>
     <div className="goal-card">
-      <span className="goal-eyebrow">META DO ESCRITÓRIO</span>
+      <span className="goal-eyebrow"><span className="caps">Meta do escritório</span></span>
       <div className="goal-bar"><i style={{ width: `${goal.pct * 100}%` }} /></div>
       <div className="goal-row"><b>US$ {goal.totalUsd.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</b><span>de US$ {goal.targetUsd.toLocaleString('pt-BR')}</span></div>
       <small>{goal.reached ? 'Meta atingida (em conta demo).' : 'Lucro registrado em conta demo; não é retorno real.'}</small>
@@ -62,7 +62,7 @@ export function SchoolBoard({ school, onRun, disabled }) {
   const when = school.lastRun ? new Date(school.lastRun).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
   return <section className="school-board" aria-label="Escola de traders">
     <header>
-      <div><span className="goal-eyebrow">ESCOLA DE TRADERS · PROFESSORA SOFIA</span>
+      <div><span className="goal-eyebrow"><span className="caps">Escola de traders · professora Sofia</span></span>
         <h3>{school.students?.length || 'As'} variações da estratégia, avaliadas em papel</h3>
         <small>Velas de 1h (4h para quem tem a etiqueta) em {school.symbols?.length || 0} mercados ({school.candles || 0} velas cada). Estudo = primeiros {Math.round((rules.split || 0.7) * 100)}% · prova = o resto · papel = trades iniciados depois de {new Date(school.startedAt).toLocaleDateString('pt-BR')}.</small></div>
       <div className="school-run"><small>{school.running || busy ? 'Avaliando…' : when ? `Avaliada ${when}` : 'Primeira avaliação em breve'}</small>
@@ -74,7 +74,7 @@ export function SchoolBoard({ school, onRun, disabled }) {
       <div role="row" className="school-row school-head"><span>#</span><span>Aluno</span><span>Estudo</span><span>Prova</span><span>Papel</span><span>Situação</span></div>
       {school.students.map(s => <div role="row" key={s.id} className={`school-row ${s.id === school.candidateId ? 'is-candidate' : ''}`} style={{ '--agent-color': s.color }}>
         <span>{s.rank}</span>
-        <span className="school-name"><b>{s.emoji} {s.name}</b><small>{s.style}</small></span>
+        <span className="school-name"><b><span className="emoji">{s.emoji} </span>{s.name}</b><small>{s.style}</small></span>
         <span className={tone(s.study, s.study.n >= rules.minStudy)}>{r2(s.study.expectancyR)} R<small>{s.study.n} trades · {Math.round(s.study.winRate * 100)}%</small></span>
         <span className={tone(s.exam, s.exam.n >= rules.minExam)}>{s.exam.n ? `${r2(s.exam.expectancyR)} R` : '—'}<small>{s.exam.n} trades</small></span>
         <span className={tone(s.paper, s.paper.n >= rules.minPaper)}>{s.paper.n ? `${r2(s.paper.expectancyR)} R` : '—'}<small>{s.paper.n}/{rules.minPaper}</small></span>
@@ -104,7 +104,7 @@ export function ManagerCard({ manager, onReview, disabled }) {
   };
   return <section className="manager-card" aria-label="Parecer do gerente">
     <header>
-      <div><span className="goal-eyebrow">GERENTE · CLAUDE</span>
+      <div><span className="goal-eyebrow"><span className="caps">Gerente · Claude</span></span>
         <h3>Parecer do escritório</h3>
         <small>Lê o estado atual (humor, regra, metas, escola, sinais) e escreve um parecer. Só leitura: não envia ordens nem muda configuração. Cada parecer é uma chamada paga à API.</small></div>
       <div className="school-run"><small>{busy || manager.running ? 'Escrevendo…' : r ? `Último: ${new Date(r.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Nenhum parecer ainda'}</small>
@@ -115,7 +115,7 @@ export function ManagerCard({ manager, onReview, disabled }) {
     {r && <div className="manager-body">
       <p className="manager-summary">{r.resumo}</p>
       <ul>{r.pontos.map((p, i) => <li key={i} className={`mg-${p.status}`}><b>{AREA_LABEL[p.area] || p.area}</b><em>{STATUS_LABEL[p.status]}</em><span>{p.texto}</span></li>)}</ul>
-      {r.proximos_passos.length > 0 && <><span className="goal-eyebrow">PRÓXIMOS PASSOS</span><ol>{r.proximos_passos.map((x, i) => <li key={i}>{x}</li>)}</ol></>}
+      {r.proximos_passos.length > 0 && <><span className="goal-eyebrow"><span className="caps">Próximos passos</span></span><ol>{r.proximos_passos.map((x, i) => <li key={i}>{x}</li>)}</ol></>}
       <small>{r.model} · não é recomendação de investimento.</small>
     </div>}
   </section>;

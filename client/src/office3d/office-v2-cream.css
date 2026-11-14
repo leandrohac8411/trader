@@ -1,0 +1,315 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+/* Visual 2, creme e dourado (referência do usuário, 13/11). Carrega depois de office-v2.css e
+   sobrescreve as cores e o trilho. Papel creme, cartões brancos com sombra leve, dourado só nos
+   destaques, verde e vermelho só em ganho e perda. Também traz o layout do dashboard (DashboardV2). */
+.office-app.ui-v2{--bg:#F7F2EA;--panel:#FFFFFF;--soft:#FBF7F0;--line:#EDE4D5;--text:#211C15;--muted:#7D7364;
+  --amber:#B8862F;--gold:#C9963A;--gold-soft:#F6E9CF;--gain:#1E9E5A;--loss:#D94A3D;--gain-soft:#E4F4EA;--loss-soft:#FBE7E4;
+  --shadow:0 1px 2px #3a2a1008,0 8px 24px -12px #3a2a1022}
+.office-app.ui-v2 :is(h1,h2,h3,.agent-identity h2,.ficha-head strong,.radar-market strong,.school-name b,.chart-toolbar h3,.workstation-title h2,.events-title h2){font-stretch:100%;font-weight:700;letter-spacing:-.02em}
+.office-app.ui-v2 .ui-switch button[aria-pressed=true]{background:var(--text);color:#fff}
+
+/* Trilho largo e claro, com rótulos */
+.office-app.ui-v2 .office-rail{width:232px;align-items:stretch;background:var(--soft);border-right:1px solid var(--line);padding:0 16px}
+.office-app.ui-v2 .office-rail *{color:var(--text)}
+.office-app.ui-v2 .office-logo{display:none}
+.office-app.ui-v2 .v2-brand{display:flex;align-items:center;gap:10px;margin:22px 4px 32px;text-decoration:none}
+.office-app.ui-v2 .v2-brand svg{width:40px;height:32px;fill:var(--gold);flex-shrink:0}
+.office-app.ui-v2 .v2-brand span{font:800 16px/1.05 'Archivo',sans-serif;letter-spacing:-.01em}
+.office-app.ui-v2 .v2-brand small{display:block;font:600 9px/1.4 'Archivo',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-top:4px}
+.office-app.ui-v2 .rail-nav{gap:4px}
+.office-app.ui-v2 .rail-nav button{width:100%;height:44px;display:flex;align-items:center;gap:14px;padding:0 14px;border-radius:10px;font-size:14px;font-weight:500;justify-content:flex-start}
+.office-app.ui-v2 .rail-nav button svg{color:var(--muted);flex-shrink:0}
+.office-app.ui-v2 .rail-label{display:inline;white-space:nowrap}
+.office-app.ui-v2 .rail-nav button:hover{background:#fff}
+.office-app.ui-v2 .rail-nav .rail-active{background:var(--gold-soft);box-shadow:inset 0 0 0 1px #E8D3A8}
+.office-app.ui-v2 .rail-nav .rail-active svg{color:var(--amber)}
+.office-app.ui-v2 .rail-active:before{display:none}
+.office-app.ui-v2 .rail-bottom{align-items:flex-start;padding:0 6px 24px}
+.office-app.ui-v2 .operator-avatar{background:var(--gold-soft);color:var(--amber)}
+.office-app.ui-v2 .rail-version{color:var(--muted)}
+
+/* Cabeçalho branco; a marca mora no trilho */
+.office-app.ui-v2 .office-header{height:64px;background:var(--panel);border-bottom:1px solid var(--line)}
+.office-app.ui-v2 .office-wordmark,.office-app.ui-v2 .header-divider{display:none}
+.office-app.ui-v2 .demo-badge svg{color:var(--gain)}
+.office-app.ui-v2 .classic-button{border-color:var(--line)}
+.office-app.ui-v2 .classic-button:hover{background:var(--soft);color:var(--text)}
+
+/* Faixa de cotações clara */
+.office-app.ui-v2 .ticker{background:var(--panel);border-bottom:1px solid var(--line);height:46px;mask-image:none}
+.office-app.ui-v2 .tick{border-right:1px solid var(--line);color:var(--text)}
+.office-app.ui-v2 :is(.tick b,.tick span){color:var(--text)}
+.office-app.ui-v2 .tick em{color:var(--muted)}
+.office-app.ui-v2 .tick em.up{color:var(--gain)}
+.office-app.ui-v2 .tick em.down{color:var(--loss)}
+.office-app.ui-v2 .tick-desk b{color:var(--amber)}
+
+/* Título contido, abas com régua dourada, cartões com sombra leve */
+.office-app.ui-v2 .office-main{padding-top:22px;max-width:1720px}
+.office-app.ui-v2 .office-title-row{margin-bottom:16px}
+.office-app.ui-v2 .office-title-row h1{font-size:clamp(26px,2.2vw,34px);font-stretch:100%;letter-spacing:-.03em}
+.office-app.ui-v2 .office-title-row p{margin-top:6px;font-size:14px}
+.office-app.ui-v2 .view-tabs{margin:0 0 22px}
+.office-app.ui-v2 .view-tabs button.is-active:after{background:var(--gold)}
+.office-app.ui-v2 :is(.floor-column,.agent-panel,.office-events,.school-board,.manager-card,.proposals-card,.market-radar,.desk-verdict,.desk-box,.agent-workspace,.daily-board,.mood-meter,.goals-strip,.desk-kpis){box-shadow:var(--shadow);border-radius:14px}
+.office-app.ui-v2 :is(.agent-action,.school-run button):hover:not(:disabled){background:var(--amber)}
+.office-app.ui-v2 :is(.badges span.is-done,.school-row.is-candidate){background:var(--gold-soft)}
+.office-app.ui-v2 .badges span.is-done{border-color:var(--gold)}
+.office-app.ui-v2 .goal-bar i{background:var(--gold)}
+.office-app.ui-v2 .event-row .event-historical{background:var(--gold-soft);color:var(--amber)}
+.office-app.ui-v2 .portrait-frame{background:radial-gradient(ellipse at 50% 70%,#C9963A33,#F3ECE0 70%)}
+.office-app.ui-v2 .chat-user{background:var(--gold-soft)!important}
+.office-app.ui-v2 .desk-progress i{background:var(--gold-soft)}
+
+/* ── Dashboard ────────────────────────────────────────────────────────── */
+.v2-dash{display:grid;gap:18px;grid-template-columns:repeat(12,minmax(0,1fr));margin-bottom:22px}
+.v2-dash .v2-scene{grid-column:span 8}
+.v2-dash .v2-side{grid-column:span 4;display:grid;gap:18px;align-content:start}
+.v2-dash .v2-market{grid-column:span 4}
+.v2-dash .v2-chart{grid-column:span 5}
+.v2-dash .v2-signals{grid-column:span 3}
+.v2-dash :is(.v2-perf,.v2-dist,.v2-openpnl,.v2-risk){grid-column:span 3}
+@media(max-width:1500px){.v2-dash .v2-market{grid-column:span 5}.v2-dash .v2-chart{grid-column:span 7}.v2-dash .v2-signals{grid-column:span 12}.v2-dash :is(.v2-perf,.v2-dist,.v2-openpnl,.v2-risk){grid-column:span 6}}
+@media(max-width:1200px){.v2-dash :is(.v2-scene,.v2-market,.v2-chart){grid-column:span 12}.v2-dash .v2-side{grid-column:span 12;grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.v2-dash{gap:12px}.v2-dash .v2-side{grid-template-columns:1fr}.v2-dash :is(.v2-perf,.v2-dist,.v2-openpnl,.v2-risk){grid-column:span 12}}
+@media(max-width:1100px){.office-app.ui-v2 .office-rail{width:76px;padding:0 10px}.office-app.ui-v2 :is(.rail-label,.v2-brand span){display:none}.office-app.ui-v2 .v2-brand{margin:22px auto 30px}.office-app.ui-v2 .rail-nav button{justify-content:center;padding:0}}
+
+.v2-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px 20px;min-width:0;color:var(--text)}
+.v2-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.v2-card-head>div{min-width:0}
+.office-app.ui-v2 .v2-card-head h2{font:700 17px/1.25 'Archivo',sans-serif;letter-spacing:-.01em;margin:0;display:flex;align-items:center;gap:8px}
+.office-app.ui-v2 .v2-card-head h2 small{font-weight:500;font-size:13px;color:var(--muted)}
+.v2-card-head>div>span{font-size:12px;color:var(--muted)}
+.office-app.ui-v2 .v2-card .up{color:var(--gain)}
+.office-app.ui-v2 .v2-card .down{color:var(--loss)}
+.v2-muted{color:var(--muted);font-size:12px}
+.v2-empty{color:var(--muted);font-size:13px;margin:6px 0}
+.office-app.ui-v2 .v2-link{border:0;background:none;color:var(--amber);font-size:13px;font-weight:600;padding:0;white-space:nowrap}
+.v2-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:999px;padding:4px 10px;background:var(--gain-soft);color:var(--gain)}
+.v2-pill i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.v2-pill.off{background:var(--loss-soft);color:var(--loss)}
+.office-app.ui-v2 .v2-chip{display:inline-block;font-size:12px;font-weight:600;border-radius:6px;padding:3px 9px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.office-app.ui-v2 .v2-chip.ok{background:var(--gain-soft);color:var(--gain)}
+.office-app.ui-v2 .v2-chip.bad{background:var(--loss-soft);color:var(--loss)}
+.office-app.ui-v2 .v2-chip.warn{background:var(--gold-soft);color:var(--amber)}
+.office-app.ui-v2 .v2-coin{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--coin);color:#fff;font:800 11px 'Archivo',sans-serif;flex-shrink:0}
+.v2-pair{display:inline-flex;align-items:center;gap:8px;font-weight:700}
+.office-app.ui-v2 .v2-pair small{font-weight:500;color:var(--muted);font-size:11px}
+.v2-pair.big{font-size:18px}
+.office-app.ui-v2 .v2-pair.big .v2-coin{width:28px;height:28px;font-size:13px}
+.office-app.ui-v2 .v2-pair.big small{font-size:14px}
+
+/* Cena 3D */
+.v2-scene{padding:16px 16px 14px;display:flex;flex-direction:column}
+.v2-scene .v2-card-head{padding:0 4px;margin-bottom:12px}
+.office-app.ui-v2 .v2-scene .v2-card-head h2{font-size:20px}
+.v2-scene-tools{display:flex;gap:6px;align-items:center}
+.office-app.ui-v2 .v2-scene-tools select{height:32px;font-size:12px;padding:0 8px;max-width:170px}
+.office-app.ui-v2 .v2-scene-tools button{height:32px;min-width:32px;border:1px solid var(--line);background:var(--panel);border-radius:8px;font-size:13px;padding:0 10px}
+.office-app.ui-v2 .v2-scene-tools button:hover{background:var(--soft)}
+.office-app.ui-v2 .v2-scene-tools button[aria-pressed=true]{background:var(--loss);border-color:var(--loss);color:#fff}
+.office-app.ui-v2 .v2-scene .office-scene-wrap{margin:0;flex:1;min-height:clamp(380px,36vw,560px);height:auto;border-radius:10px;background:#EFE6D6;box-shadow:none}
+.office-app.ui-v2 .v2-scene .office-scene-wrap *{color:var(--text)}
+.office-app.ui-v2 .v2-scene .office-nameplate{background:#fffffff2;border:1px solid var(--line);box-shadow:0 4px 14px -6px #3a2a1040;font-weight:700}
+.office-app.ui-v2 .v2-scene .office-nameplate span{color:var(--muted)}
+.office-app.ui-v2 .v2-scene .office-nameplate.is-selected{border-color:var(--gold)}
+.office-app.ui-v2 .v2-scene .scene-cam-hud{background:#fffffff2;border-color:var(--line)}
+.office-app.ui-v2 .v2-scene .scene-caption{color:var(--muted)}
+.office-app.ui-v2 .v2-scene .floor-mark{border-color:var(--line);color:var(--muted)}
+.office-app.ui-v2 .v2-scene .scene-message{background:#fffffff2;color:var(--muted)}
+.office-app.ui-v2 .v2-scene .ficha{background:#211C15f2}
+.office-app.ui-v2 .v2-scene .ficha *{color:#F3ECE0}
+
+/* Conta demo */
+.v2-account-top{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line);padding-bottom:14px}
+.v2-account-top>div+div{border-left:1px solid var(--line);padding-left:18px}
+.v2-account-top span,.v2-account-stats span{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.office-app.ui-v2 .v2-account-top b{font:700 24px/1.1 'Archivo',sans-serif;letter-spacing:-.02em;white-space:nowrap}
+.v2-account-top em{font-style:normal;font-size:12px;font-weight:600;margin-left:6px}
+.v2-account-stats{display:grid;grid-template-columns:repeat(3,1fr);padding-top:12px;text-align:center}
+.v2-account-stats>div+div{border-left:1px solid var(--line)}
+.office-app.ui-v2 .v2-account-stats b{font:700 20px 'Archivo',sans-serif}
+
+/* Agentes */
+.v2-agents ul{list-style:none;margin:0;padding:0}
+.office-app.ui-v2 .v2-agents button{width:100%;display:grid;grid-template-columns:10px 64px 1fr auto;align-items:center;gap:10px;border:0;background:none;padding:8px 6px;text-align:left;font-size:13px}
+.office-app.ui-v2 .v2-agents button:hover{background:var(--soft)}
+.v2-agents li+li{border-top:1px solid var(--line)}
+.v2-agents b{font-weight:700}
+.office-app.ui-v2 .v2-agents span{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v2-agents em{font-style:normal;font-size:12px;font-weight:600}
+.v2-dot{width:8px;height:8px;border-radius:50%;background:var(--gain)}
+.v2-dot.warn{background:var(--gold)}
+.v2-dot.bad,.v2-dot.off{background:var(--loss)}
+.office-app.ui-v2 .v2-agents em.ok{color:var(--gain)}
+.office-app.ui-v2 .v2-agents em.warn{color:var(--amber)}
+.office-app.ui-v2 .v2-agents :is(em.bad,em.off){color:var(--loss)}
+
+/* Tabela de mercado */
+.v2-table{width:100%;border-collapse:collapse;font-size:13px}
+.office-app.ui-v2 .v2-table th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:0 6px 8px;border-bottom:1px solid var(--line)}
+.office-app.ui-v2 .v2-table td{padding:10px 6px;border-bottom:1px solid var(--line)}
+.office-app.ui-v2 .v2-table tr:last-child td{border-bottom:0}
+.office-app.ui-v2 .v2-table .num{text-align:right}
+.v2-table tbody tr{cursor:pointer}
+.office-app.ui-v2 .v2-table tbody tr:hover td{background-color:var(--soft)}
+.office-app.ui-v2 .v2-table tbody tr.is-on td{background-color:var(--gold-soft)}
+.v2-read{font-size:12px;font-weight:600;color:var(--muted)}
+.v2-score{display:inline-flex;align-items:center;justify-content:flex-end;gap:8px;font-weight:600}
+.v2-score .bar{width:44px;height:5px;border-radius:3px;background:var(--soft);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.v2-score .bar i{display:block;height:100%;background:#D8CDBA}
+.v2-score .bar i.hot{background:var(--gold)}
+
+/* Gráfico */
+.v2-seg,.v2-tabs{display:flex;gap:2px;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:2px}
+.office-app.ui-v2 :is(.v2-seg,.v2-tabs) button{border:0;background:none;font-size:12px;font-weight:600;color:var(--muted);padding:4px 9px;border-radius:6px;white-space:nowrap}
+.office-app.ui-v2 .v2-seg button[aria-pressed=true]{background:var(--gold-soft);color:var(--amber);box-shadow:inset 0 0 0 1px #E8D3A8}
+.office-app.ui-v2 .v2-tabs button[aria-selected=true]{background:var(--panel);color:var(--text);box-shadow:0 1px 2px #3a2a1014}
+.v2-chart-price{display:flex;align-items:baseline;gap:10px;margin:-6px 0 6px}
+.office-app.ui-v2 .v2-chart-price b{font:700 28px 'Archivo',sans-serif;letter-spacing:-.02em}
+.v2-chart-price em{font-style:normal;font-weight:700;font-size:14px}
+.v2-chart-price span{font-size:12px;color:var(--muted)}
+.v2-chart-empty{height:240px;display:grid;place-items:center;color:var(--muted);font-size:13px}
+.v2-candles{width:100%;height:auto;display:block}
+.v2-candles .grid{stroke:var(--line);stroke-dasharray:3 4}
+.v2-candles text{font:11px 'Archivo',sans-serif;fill:var(--muted)}
+.v2-candles .up line{stroke:#2BAA6A}.v2-candles .up rect{fill:#2BAA6A}
+.v2-candles .down line{stroke:#E0574B}.v2-candles .down rect{fill:#E0574B}
+.v2-candles .vol.up{fill:#2BAA6A30}.v2-candles .vol.down{fill:#E0574B30}
+.v2-candles .ema{fill:none;stroke-width:1.6}
+.v2-candles .ema.fast{stroke:var(--gold)}.v2-candles .ema.slow{stroke:#4C6FD8}
+.v2-candles .last{stroke:#2BAA6A;stroke-dasharray:2 3}
+.v2-candles .last-tag{fill:#2BAA6A}
+.v2-candles .last-txt{fill:#fff;font-weight:700}
+.v2-legend{display:flex;gap:16px;align-items:center;font-size:12px;color:var(--muted);margin-top:6px}
+.v2-legend i{display:inline-block;width:14px;height:2px;margin-right:6px;vertical-align:middle}
+.v2-legend i.fast{background:var(--gold)}.v2-legend i.slow{background:#4C6FD8}
+.v2-legend .v2-muted{margin-left:auto}
+
+/* Sinais, propostas e posições */
+.v2-signals .v2-card-head{flex-wrap:wrap}
+.v2-rows{list-style:none;margin:0;padding:0}
+.office-app.ui-v2 .v2-rows li{display:grid;grid-template-columns:78px 68px minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line);font-size:13px}
+.office-app.ui-v2 .v2-rows li:first-child{border-top:0}
+.v2-rows time{font-size:12px;color:var(--muted)}
+.v2-dir{font-weight:700;font-size:12px}
+.v2-track .pos-track{display:flex;flex-direction:column;gap:4px}
+.v2-track .pos-track small{font-size:11px}
+.v2-alert{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v2-rows li>b{font-size:13px;white-space:nowrap}
+
+/* Linha de baixo */
+.office-app.ui-v2 .v2-big{display:block;font:700 30px/1.1 'Archivo',sans-serif;letter-spacing:-.02em}
+.v2-spark{width:100%;height:80px;margin-top:10px}
+.v2-spark path.up{fill:none;stroke:var(--gain);stroke-width:2}
+.v2-spark path.down{fill:none;stroke:var(--loss);stroke-width:2}
+.v2-spark .area{fill:#1E9E5A14}
+.v2-dist-body{display:flex;align-items:center;gap:18px}
+.v2-donut{width:110px;height:110px;flex-shrink:0}
+.v2-donut circle{fill:none;stroke-width:11;transform:rotate(-90deg);transform-origin:45px 45px}
+.v2-donut .track{stroke:var(--soft)}.v2-donut .loss{stroke:var(--loss)}.v2-donut .win{stroke:var(--gain)}
+.v2-donut text{text-anchor:middle;fill:var(--text)}
+.v2-donut .n{font:700 22px 'Archivo',sans-serif}
+.v2-donut .lbl{font:500 9px 'Archivo',sans-serif;fill:var(--muted)}
+.v2-dist ul{list-style:none;margin:0;padding:0;display:grid;gap:10px;font-size:13px;font-weight:600}
+.v2-dist li i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+.v2-dist li i.win{background:var(--gain)}.v2-dist li i.loss{background:var(--loss)}
+.v2-dist li span{color:var(--muted);font-weight:500}
+.v2-openpnl ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.office-app.ui-v2 .v2-openpnl li{display:grid;grid-template-columns:40px 1fr 96px;align-items:center;gap:10px;font-size:13px}
+.v2-openpnl li>span:first-child{font-weight:700}
+.v2-openpnl .bar{height:7px;background:var(--soft);border-radius:4px;overflow:hidden}
+.v2-openpnl .bar i{display:block;height:100%;border-radius:4px}
+.v2-openpnl .bar i.up{background:var(--gain)}.v2-openpnl .bar i.down{background:var(--loss)}
+.v2-openpnl li>b{text-align:right;white-space:nowrap}
+.v2-openpnl .v2-card-head>b{font-size:15px;white-space:nowrap}
+.v2-risk-bar{height:10px;border-radius:6px;background:linear-gradient(90deg,var(--gain-soft) 0 60%,var(--gold-soft) 60% 90%,var(--loss-soft) 90%);overflow:hidden;margin:4px 0 14px}
+.v2-risk-bar i{display:block;height:100%;border-radius:6px;background:var(--gain)}
+.v2-risk-bar i.warn{background:var(--gold)}.v2-risk-bar i.bad{background:var(--loss)}
+.v2-risk-nums{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.office-app.ui-v2 .v2-risk-nums b{color:var(--text)}
+.v2-risk .v2-muted{margin:10px 0 0}
+
+/* A regra genérica do v2 zera fundo e sombra de div/section: reforça os do dashboard. */
+.office-app.ui-v2 .v2-card{background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow)}
+.office-app.ui-v2 :is(.v2-seg,.v2-tabs){background:var(--soft);border:1px solid var(--line)}
+.office-app.ui-v2 .v2-risk-bar{background:linear-gradient(90deg,var(--gain-soft) 0 60%,var(--gold-soft) 60% 90%,var(--loss-soft) 90%)}
+.office-app.ui-v2 .v2-account-top{border-bottom:1px solid var(--line)}
+.office-app.ui-v2 .v2-account-top>div+div,.office-app.ui-v2 .v2-account-stats>div+div{border-left:1px solid var(--line)}
+.office-app.ui-v2 .office-rail{background:var(--soft)}
+.office-app.ui-v2 .office-header{background:var(--panel)}
+.office-app.ui-v2 .v2-card-head h2{white-space:nowrap}
+
+/* ── Segunda rodada: mais perto da referência ─────────────────────────────
+   Fonte redonda (Plus Jakarta Sans), abas no cabeçalho, sem título grande,
+   faixa de cotações fixa com ícone e variação 24h, números maiores. */
+.office-app.ui-v2{--ui:'Plus Jakarta Sans',system-ui,sans-serif;--serif:'Plus Jakarta Sans',system-ui,sans-serif}
+.office-app.ui-v2 *{font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+.office-app.ui-v2 :is(h1,h2,h3,.v2-card-head h2,.v2-big,.v2-account-top b,.v2-account-stats b,.v2-chart-price b,.v2-donut .n,.v2-brand span,.v2-brand small){font-family:'Plus Jakarta Sans',system-ui,sans-serif!important;font-stretch:100%}
+.office-app.ui-v2 :is(.office-breadcrumb,.view-tabs,.office-title-row){display:none}
+.office-app.ui-v2 .office-main{padding-top:18px}
+.office-app.ui-v2 .office-header{height:68px;gap:18px}
+.v2-head-tabs{display:flex;align-items:center;gap:4px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.v2-head-tabs>span{font-size:14px;color:var(--muted);padding:0 14px 0 2px;white-space:nowrap}
+.office-app.ui-v2 .v2-head-tabs button{border:1px solid transparent;background:none;font-size:15px;font-weight:500;color:var(--text);padding:9px 18px;border-radius:10px;white-space:nowrap}
+.office-app.ui-v2 .v2-head-tabs button:hover{background:var(--soft)}
+.office-app.ui-v2 .v2-head-tabs button.is-active{background:var(--gold-soft);border-color:#E8D3A8;font-weight:600}
+.office-app.ui-v2 .demo-badge{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;padding:7px 14px}
+.v2-live{width:9px;height:9px;border-radius:50%;background:var(--loss);display:inline-block}
+.v2-live.on{background:var(--gain);box-shadow:0 0 0 3px var(--gain-soft)}
+@media(max-width:1350px){.v2-head-tabs>span{display:none}.office-app.ui-v2 .v2-head-tabs button{padding:8px 12px;font-size:14px}}
+
+/* faixa fixa (sem rolar), cada mercado com ícone, preço e 24h */
+.office-app.ui-v2 .ticker{height:50px;overflow-x:auto;scrollbar-width:none}
+.office-app.ui-v2 .ticker-track{animation:none;width:100%}
+.office-app.ui-v2 .ticker-copy{display:none}
+.office-app.ui-v2 .tick{align-items:center;gap:8px;padding:0 22px;font-size:13px}
+.office-app.ui-v2 .tick b{font:700 13px 'Plus Jakarta Sans',sans-serif}
+.office-app.ui-v2 .tick span:not(.v2-coin){font-weight:500}
+.office-app.ui-v2 .tick em{font-size:13px;font-weight:600}
+.office-app.ui-v2 .tick .v2-coin{font-size:11px}
+.office-app.ui-v2 .v2-coin{display:inline-grid;place-items:center;border-radius:50%;background:var(--coin);font-weight:800;line-height:1;flex-shrink:0}
+
+/* cartões: títulos e números maiores, como na referência */
+.office-app.ui-v2 .v2-card{border-radius:16px;padding:20px 22px}
+.office-app.ui-v2 .v2-card-head h2{font-size:19px;font-weight:700}
+.office-app.ui-v2 .v2-scene .v2-card-head h2{font-size:22px}
+.office-app.ui-v2 .v2-account-top b{font-size:27px;font-weight:800}
+.office-app.ui-v2 .v2-account-stats b{font-size:22px;font-weight:700}
+.office-app.ui-v2 .v2-big{font-size:34px;font-weight:800}
+.office-app.ui-v2 .v2-chart-price b{font-size:32px;font-weight:800}
+.office-app.ui-v2 .v2-pair.big{font-size:19px;font-weight:800}
+.office-app.ui-v2 .v2-pair.big small{font-size:13px;font-weight:500;margin-left:6px}
+.office-app.ui-v2 .v2-table td{padding:11px 6px}
+.office-app.ui-v2 .v2-table .v2-dim{color:var(--muted)}
+.office-app.ui-v2 .v2-table td.up{color:var(--gain);font-weight:600}
+.office-app.ui-v2 .v2-table td.down{color:var(--loss);font-weight:600}
+.office-app.ui-v2 .v2-agents button{font-size:14px;padding:9px 6px}
+.office-app.ui-v2 .rail-nav button{height:48px;font-size:15px}
+.office-app.ui-v2 .v2-brand span{font-size:19px;font-weight:800}
+.office-app.ui-v2 .v2-brand svg{width:46px;height:38px}
+.office-app.ui-v2 .v2-scene .office-scene-wrap{background:#F1E8D8}
+.office-app.ui-v2 .v2-table th{white-space:nowrap}
+
+/* Logo do usuário (fundo branco some sobre o creme com multiply) */
+.office-app.ui-v2 .v2-brand{margin:18px 0 26px;display:block}
+.office-app.ui-v2 .v2-brand img{display:block;width:100%;height:auto;mix-blend-mode:multiply}
+@media(max-width:1100px){.office-app.ui-v2 .v2-brand{width:52px;height:46px;overflow:hidden;margin:18px auto 26px}.office-app.ui-v2 .v2-brand img{width:auto;height:46px;max-width:none;object-fit:cover;object-position:left}}
+
+/* Celular: menu embaixo já tem as seções; cabeçalhos dos cartões quebram linha */
+@media(max-width:760px){
+  .office-app.ui-v2 .v2-head-tabs{display:none}
+  .office-app.ui-v2 .office-header{height:56px;padding:0 12px}
+  .office-app.ui-v2 .v2-card{padding:16px}
+  .office-app.ui-v2 .v2-card-head{flex-wrap:wrap}
+  .office-app.ui-v2 .v2-card-head h2{white-space:normal}
+  .office-app.ui-v2 .v2-scene .v2-card-head h2{font-size:18px}
+  .office-app.ui-v2 .v2-scene-tools{width:100%}
+  .office-app.ui-v2 .v2-scene-tools select{flex:1;max-width:none}
+  .office-app.ui-v2 .v2-scene .office-scene-wrap{min-height:340px}
+  .office-app.ui-v2 .v2-table{font-size:12px}
+  .office-app.ui-v2 .v2-table :is(th,td):nth-child(4){display:none}
+  .office-app.ui-v2 .v2-account-top b{font-size:22px}
+  .office-app.ui-v2 .v2-rows li{grid-template-columns:64px 60px minmax(0,1fr) auto;gap:8px}
+  .office-app.ui-v2 .office-main{padding:14px 12px 90px;overflow-x:hidden}
+}

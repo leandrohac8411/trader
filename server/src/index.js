@@ -19,7 +19,7 @@ import {
 } from "./services/cmc.js";
 import { getEthGas } from "./services/eth.js";
 import { getFearGreed } from "./services/fng.js";
-import { getKlines } from "./services/bybit.js";
+import { getKlines, getTickers } from "./services/bybit.js";
 import { analyzeCandles, higherTF } from "./services/strategy.js";
 import { runBacktest, runGrid } from "./services/backtest.js";
 import { chatLLM, AI_ENABLED, AI_MODEL } from "./services/ai.js";
@@ -48,8 +48,10 @@ if (SERVERLESS) {
 }
 if (APP_PASSWORD) app.use(basicAuth({ user: APP_USER, password: APP_PASSWORD, open: ["/api/health", "/api/bot/tick"] }));
 // Modo Redis: cada requisição carrega os dados no começo e grava o que mudou antes de responder.
+// Dados públicos de mercado (velas, cotações) não tocam no banco: não gastam banda do Upstash.
+const NO_STORAGE = /^/api/bybit//;
 app.use((req, res, next) => {
-  if (!isRedis()) return next();
+  if (!isRedis() || NO_STORAGE.test(req.path)) return next();
   withContext(async () => {
     try { await hydrate(); } catch { return res.status(503).json({ error: "Armazenamento indisponível agora." }); }
     const end = res.end.bind(res);
@@ -179,6 +181,16 @@ app.get("/api/bybit/kline", async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit || "200", 10), 1000);
     const candles = await getKlines({ symbol, interval, category, limit });
     res.json({ data: { symbol, interval, category, candles } });
+  } catch (e) {
+    res.status(e.status && e.status < 500 ? e.status : 500).json({ error: e.message || String(e) });
+  }
+});
+
+// Cotação 24h dos mercados acompanhados (faixa de preços e tabela do visual 2). Só dados públicos.
+app.get("/api/bybit/tickers", async (req, res) => {
+  try {
+    const symbols = String(req.query.symbols || "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT").toUpperCase().split(",").filter((s) => /^[A-Z0-9]{2,20}$/.test(s)).slice(0, 20);
+    res.json({ data: await getTickers(symbols) });
   } catch (e) {
     res.status(e.status && e.status < 500 ? e.status : 500).json({ error: e.message || String(e) });
   }

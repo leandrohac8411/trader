@@ -84,6 +84,20 @@ export async function getKlines({
   });
 }
 
+/** Cotação 24h (preço, variação, volume) dos contratos USDT pedidos. Cache de 20 s. */
+let tickCache = null;
+export async function getTickers(symbols) {
+  if (!tickCache || Date.now() - tickCache.at > 20_000) {
+    const json = await fetchJson(`${BYBIT_BASE}/v5/market/tickers?category=linear`);
+    tickCache = { at: Date.now(), list: json.result?.list || [] };
+  }
+  const want = new Set(symbols);
+  return tickCache.list.filter((t) => want.has(t.symbol)).map((t) => ({
+    symbol: t.symbol, price: Number(t.lastPrice), change24hPct: Number(t.price24hPcnt) * 100,
+    turnover24h: Number(t.turnover24h), high24h: Number(t.highPrice24h), low24h: Number(t.lowPrice24h),
+  }));
+}
+
 export function _clearCache() {
   cache.clear();
 }

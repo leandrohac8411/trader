@@ -9,7 +9,7 @@ const tfLabel = tf => tf === '240' ? '4h' : tf === '60' ? '1h' : tf ? `${tf}m` :
 const REASON = { tp: 'Alvo', stop: 'Stop', unknown: '?' };
 
 // Live balance and positions come from the demo account (read-only route, cached 15 s).
-function useDesk(enabled) {
+export function useDesk(enabled) {
   const [desk, setDesk] = useState(null), [error, setError] = useState('');
   useEffect(() => {
     if (!enabled) return undefined;
@@ -78,7 +78,7 @@ export function positionTrack({ side, entry, markPrice: mark, stopLoss: stop, ta
     label: towardTarget ? `${pct}% do caminho até o alvo` : `${pct}% do caminho até o stop` };
 }
 
-function PositionTrack({ p }) {
+export function PositionTrack({ p }) {
   const t = positionTrack(p);
   if (!t) return '—';
   return <div className={`pos-track ${t.towardTarget ? 'good' : 'bad'}`} title={t.label}>
@@ -96,9 +96,12 @@ export default function DemoDesk({ snapshot, connected }) {
   const status = !bot?.enabled ? 'Bot desligado neste servidor' : bot.paused ? `Bot pausado (${bot.paused})` : bot.dryRun ? 'Bot em dry-run (não envia ordem)' : 'Bot operando na conta demo';
   return <section className="demo-desk" aria-label="Mesa demo: resultado da conta">
     <div className={`desk-verdict v-${res.verdict.code}`}>
-      <div><span className="goal-eyebrow">A ESTRATÉGIA ESTÁ GANHANDO NA DEMO?</span>
+      <div><span className="goal-eyebrow"><span className="caps">A estratégia está ganhando na demo?</span></span>
         <h2>{res.verdict.label}</h2><p>{res.verdict.detail}</p>
         {res.since && <small className="desk-since">Contando desde {new Date(res.since).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}, quando começou a rodada atual do bot.{res.excluded ? ` ${res.excluded} trade${res.excluded === 1 ? '' : 's'} de rodadas antigas (configuração anterior) fica${res.excluded === 1 ? '' : 'm'} de fora.` : ''}</small>}</div>
+      <div className="desk-hero v2-only"><span>Lucro realizado nesta rodada</span>
+        <b className={res.totalPnlUsd > 0 ? 'pos' : res.totalPnlUsd < 0 ? 'neg' : ''}>{usd(res.totalPnlUsd, true)}</b>
+        <small>{res.n} trade{res.n === 1 ? '' : 's'} encerrado{res.n === 1 ? '' : 's'}: {res.wins} com lucro e {res.losses} com prejuízo</small></div>
       <div className="desk-status"><i className={bot?.enabled && !bot?.paused ? 'on' : ''} />{status}</div>
     </div>
 

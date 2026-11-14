@@ -3,7 +3,7 @@ import { createOfficeScene } from './createOfficeScene.js';
 import { Ficha } from './GameUI.jsx';
 import { CAMERA_FICHA } from './fichas.js';
 
-export default function OfficeScene({ agents, snapshot, selected, onSelect, reduced, sceneRef, onCamera }) {
+export default function OfficeScene({ agents, snapshot, selected, onSelect, reduced, sceneRef, onCamera, theme = 'night' }) {
   const host = useRef(null), labels = useRef({}), current = useRef({ onSelect, onCamera });
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
@@ -13,6 +13,7 @@ export default function OfficeScene({ agents, snapshot, selected, onSelect, redu
     let scene;
     try {
       scene = createOfficeScene(host.current, {
+        theme,
         onSelect: id => current.current.onSelect(id),
         onReady: () => setReady(true),
         onError: setError,
@@ -32,8 +33,8 @@ export default function OfficeScene({ agents, snapshot, selected, onSelect, redu
       setError('Seu navegador não conseguiu abrir a cena 3D. Os agentes continuam disponíveis no painel e na lista abaixo.');
     }
     return () => { scene?.dispose(); sceneRef.current = null; };
-  }, [sceneRef]);
-  useEffect(() => { sceneRef.current?.update(snapshot, selected); }, [snapshot, selected, sceneRef]);
+  }, [sceneRef, theme]);
+  useEffect(() => { sceneRef.current?.update(snapshot, selected); }, [snapshot, selected, sceneRef, theme]);
   useEffect(() => { sceneRef.current?.motion(!reduced); }, [reduced, sceneRef]);
   const stateLabel = a => a.id === 'trader' && snapshot?.crew?.trader?.cooldown ? 'No lounge' : a.state === 'working' ? 'Em consulta' : a.state === 'monitoring' ? 'Monitorando' : a.state === 'error' ? 'Falha' : a.role;
   const fichaId = CAMERA_FICHA[cam?.id];

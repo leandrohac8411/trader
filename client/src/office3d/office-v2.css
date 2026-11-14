@@ -1,0 +1,339 @@
+/* Visual 2 — "galeria de banco privado". Só vale com .ui-v2; o visual 1 (office.css) não muda.
+   Papel #EEF0F3 · superfície #FFFFFF · tinta #10162B · grafite #5D6678 · linha #DDE1E7
+   cobalto #2D4BF0 (único destaque) · ganho #0B8F5A · perda #D6404A · palco #0B1322
+   Uma família só, Archivo: títulos largos (wdth 115), números grandes condensados (wdth 78), interface normal.
+   O escritório 3D e os gráficos são "palcos" escuros: o único lugar com sombra profunda. */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..800;1,62..125,400..800&display=swap');
+
+/* Seletor de visual (aparece nas duas versões) */
+.office-app .ui-switch{display:flex;padding:3px;border-radius:999px;border:1px solid var(--line);gap:2px}
+.office-app .ui-switch button{border:0;background:none;color:var(--muted);font-size:11px;padding:5px 11px;border-radius:999px;white-space:nowrap}
+.office-app .ui-switch button[aria-pressed=true]{background:var(--amber);color:#fff;font-weight:600}
+.office-app:not(.ui-v2) .ui-switch button[aria-pressed=true]{color:#14212b}
+.office-app .demo-badge{white-space:nowrap}
+@media(max-width:650px){.office-app .ui-switch button{padding:4px 10px;font-size:11px}.office-app .ui-switch .ui-word{display:none}}
+
+/* ── Base ─────────────────────────────────────────────────────────────── */
+.office-app.ui-v2{--bg:#EEF0F3;--panel:#FFFFFF;--soft:#F5F6F8;--line:#DDE1E7;--text:#10162B;--muted:#5D6678;--amber:#2D4BF0;--gain:#0B8F5A;--loss:#D6404A;--stage:#0B1322;
+  --serif:'Archivo',system-ui,sans-serif;--ui:'Archivo',system-ui,sans-serif;
+  background:var(--bg);color:var(--text);font:14px/1.5 var(--ui);font-variant-numeric:tabular-nums;color-scheme:light}
+.office-app.ui-v2 *{font-family:var(--ui);letter-spacing:0;color:inherit}
+.office-app.ui-v2 :is(div,section,aside,main,header,footer,nav,ul,ol,li,table,thead,tbody,tr,th,td,details,form,label,dl,article){background-color:transparent;border-color:var(--line);box-shadow:none}
+.office-app.ui-v2 :is(h1,h2,h3){font-family:var(--serif);font-weight:400;letter-spacing:-.01em}
+.office-app.ui-v2 :is(small,time,.quiet-copy){color:var(--muted)}
+.office-app.ui-v2 .pos,.office-app.ui-v2 .is-pos{color:var(--gain)!important}
+.office-app.ui-v2 .neg,.office-app.ui-v2 .is-neg{color:var(--loss)!important}
+.office-app.ui-v2 :is(button,a,input,select):focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+.office-app.ui-v2 select{background:var(--panel)!important;border:1px solid var(--line)!important;color:var(--text)!important;border-radius:10px!important}
+.office-app.ui-v2 :is(.office-eyebrow,.goal-eyebrow,.agent-panel-eyebrow,.task-heading>span,.event-table-head,.school-head,.desk-table th,.chart-provider,.trader-decision small,.mood-title,.workstation-title span:first-child,.events-title>div>span,.radar-heading>div>span){
+  text-transform:none;letter-spacing:0;font:500 12px var(--ui);color:var(--muted)}
+
+/* ── Trilho em tinta, cabeçalho em papel ──────────────────────────────── */
+.office-app.ui-v2 .office-rail{background:var(--text);border-right:0}
+.office-app.ui-v2 .office-rail *{color:#C9CFDC}
+.office-app.ui-v2 .office-logo{background:#fff;border-radius:50%}
+.office-app.ui-v2 .office-logo span{font:italic 400 34px/1 var(--serif);color:var(--text);margin-top:-4px}
+.office-app.ui-v2 .office-logo i{background:var(--amber);border-radius:50%}
+.office-app.ui-v2 .rail-nav button{border-radius:12px}
+.office-app.ui-v2 .rail-nav button:hover{background:#ffffff14;color:#fff}
+.office-app.ui-v2 .rail-nav .rail-active{background:#ffffff1f;color:#fff}
+.office-app.ui-v2 .rail-active:before{background:#fff}
+.office-app.ui-v2 .operator-avatar{background:#ffffff1f}
+.office-app.ui-v2 .office-header{height:72px;border-bottom:1px solid var(--line);background:var(--bg)}
+.office-app.ui-v2 .office-wordmark{font:400 25px/1 var(--serif);letter-spacing:0;flex-direction:row;align-items:baseline;gap:7px}
+.office-app.ui-v2 .office-wordmark span{font:italic 400 25px/1 var(--serif);letter-spacing:0;color:var(--amber)}
+.office-app.ui-v2 .header-divider{background:var(--line)}
+.office-app.ui-v2 .office-breadcrumb{color:var(--muted);font-size:13px}
+.office-app.ui-v2 .office-breadcrumb span{color:var(--line)}
+.office-app.ui-v2 .office-breadcrumb strong{color:var(--text);font-weight:500}
+.office-app.ui-v2 .demo-badge{color:var(--text);font-size:12px;border:1px solid var(--line);border-radius:999px;padding:6px 12px;background:var(--panel)}
+.office-app.ui-v2 .classic-button{border:1px solid var(--text);border-radius:999px;color:var(--text);padding:8px 15px;font-size:12px!important;background:none}
+.office-app.ui-v2 .classic-button:hover{background:var(--text);color:#fff}
+.office-app.ui-v2 .ui-switch{background:var(--panel)}
+
+/* ── Faixa de cotações ────────────────────────────────────────────────── */
+.office-app.ui-v2 .ticker{background:var(--text);overflow:hidden;height:42px;display:flex;align-items:center;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.office-app.ui-v2 .ticker-track{display:flex;width:max-content;animation:v2-ticker 38s linear infinite}
+.office-app.ui-v2 .ticker:hover .ticker-track{animation-play-state:paused}
+.office-app.ui-v2 .ticker-copy{display:flex}
+.office-app.ui-v2 .tick{display:flex;align-items:baseline;gap:9px;padding:0 30px;border-right:1px solid #ffffff1a;white-space:nowrap;color:#E9EDF5;font-size:13px}
+.office-app.ui-v2 .tick b{font:italic 400 18px var(--serif);color:#fff}
+.office-app.ui-v2 .tick span{color:#C9CFDC}
+.office-app.ui-v2 .tick em{font-style:normal;font-size:12px;color:#8E97AB}
+.office-app.ui-v2 .tick em.up{color:#3DD598}.office-app.ui-v2 .tick em.down{color:#FF7A82}
+.office-app.ui-v2 .tick-desk b{color:#9DB0FF}
+@keyframes v2-ticker{to{transform:translateX(-50%)}}
+.office-app.ui-v2.reduce-motion .ticker-track{animation:none}
+@media(prefers-reduced-motion:reduce){.office-app.ui-v2 .ticker-track{animation:none}}
+
+/* ── Título da página: serifa grande ──────────────────────────────────── */
+.office-app.ui-v2 .office-main{max-width:1680px;padding-top:44px}
+.office-app.ui-v2 .office-title-row{margin-bottom:34px;align-items:flex-end}
+.office-app.ui-v2 .office-eyebrow{margin-bottom:6px}
+.office-app.ui-v2 .office-title-row h1{font:400 clamp(40px,4.6vw,68px)/1 var(--serif);letter-spacing:-.02em;max-width:22ch}
+.office-app.ui-v2 .office-title-row h1>span{color:var(--amber)}
+.office-app.ui-v2 .office-title-row p{font-size:15px;color:var(--muted);margin-top:14px;max-width:58ch}
+.office-app.ui-v2 .connection-pill{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.office-app.ui-v2 .connection-pill>span{color:var(--muted)}
+.office-app.ui-v2 .connection-pill.is-connected>i{background:var(--gain);box-shadow:0 0 0 4px #0B8F5A22}
+
+/* Abas: controle segmentado */
+.office-app.ui-v2 .view-tabs{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px;gap:2px;width:fit-content;max-width:100%;margin:-4px 0 30px}
+.office-app.ui-v2 .view-tabs button{color:var(--muted);font-size:13px!important;font-weight:500;padding:8px 16px;border-radius:999px}
+.office-app.ui-v2 .view-tabs button:hover{color:var(--text);background:var(--soft)}
+.office-app.ui-v2 .view-tabs button.is-active{color:#fff;background:var(--text)}
+.office-app.ui-v2 .view-tabs button.is-active:after{display:none}
+
+/* ── Superfícies brancas com linha fina ───────────────────────────────── */
+.office-app.ui-v2 :is(.floor-column,.agent-panel,.office-events,.school-board,.manager-card,.proposals-card,.market-radar,.desk-verdict,.desk-box,.agent-workspace,.daily-board,.mood-meter,.goals-strip,.desk-kpis){
+  background:var(--panel);border:1px solid var(--line);border-radius:22px}
+.office-app.ui-v2 :is(.school-board,.manager-card,.proposals-card,.desk-box,.daily-board){padding:24px 26px}
+.office-app.ui-v2 :is(.school-board,.manager-card,.proposals-card,.desk-box,.daily-board) h3{font:400 28px/1.1 var(--serif);margin:4px 0 6px}
+.office-app.ui-v2 :is(.school-board header small,.manager-card header small,.proposals-card header small){font-size:13px;line-height:1.55}
+.office-app.ui-v2 :is(.agent-action,.school-run button,.chat-form button){background:var(--text);border:0;color:#fff;border-radius:999px;font-weight:500!important}
+.office-app.ui-v2 :is(.agent-action,.school-run button):hover:not(:disabled){background:var(--amber)}
+.office-app.ui-v2 .radar-controls button{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+.office-app.ui-v2 :is(.school-error,.action-error,.chat-unavailable,.office-warning){background:#FDECEC!important;color:#8A1F27;border:0;border-radius:12px}
+
+/* ── Palcos escuros: escritório 3D, gráficos, fichas ──────────────────── */
+.office-app.ui-v2 .office-scene-wrap{background:var(--stage);border-radius:18px;margin:0 10px;box-shadow:0 30px 60px -20px #0B132299}
+.office-app.ui-v2 .office-scene-wrap *{color:#E9EDF5}
+.office-app.ui-v2 .office-nameplate{background:#0B1322E6;border-color:#ffffff26;border-radius:999px;font-size:11px!important;padding:5px 11px!important}
+.office-app.ui-v2 .office-nameplate span{font-size:9px;color:#9AA4B8}
+.office-app.ui-v2 .scene-cam-hud{font-family:var(--ui);letter-spacing:0;font-size:11px;font-weight:500;border-radius:999px;background:#0B1322CC;border-color:#ffffff26}
+.office-app.ui-v2 .ficha{background:var(--stage);border-width:1px;border-radius:18px;box-shadow:0 20px 40px -18px #0B1322AA}
+.office-app.ui-v2 .ficha *{color:#E9EDF5}
+.office-app.ui-v2 .ficha-head strong{font:400 22px var(--serif)}
+.office-app.ui-v2 .ficha-head em{font:italic 400 15px var(--serif);color:var(--agent-color,#61c9bc)}
+.office-app.ui-v2 .ficha-head small{display:none}
+.office-app.ui-v2 .ficha dt{text-transform:none;letter-spacing:0;font:400 12px var(--ui);color:#9AA4B8}
+.office-app.ui-v2 .ficha dd{font:500 12px var(--ui)}
+.office-app.ui-v2 .ficha-live{border-color:#ffffff1a}
+.office-app.ui-v2 :is(.market-chart-panel,.trader-chart){background:var(--stage);border:0;border-radius:22px;box-shadow:0 30px 60px -24px #0B132288}
+.office-app.ui-v2 :is(.market-chart-panel,.trader-chart) *{color:#C9D2E3}
+.office-app.ui-v2 :is(.market-chart-panel,.trader-chart) :is(h3,b,strong){color:#fff}
+.office-app.ui-v2 .market-symbols,.office-app.ui-v2 .chart-timeframes{background:#ffffff0f!important;border:1px solid #ffffff1f;border-radius:999px}
+.office-app.ui-v2 .market-symbols button,.office-app.ui-v2 .chart-timeframes button{font:500 12px var(--ui)!important;border-radius:999px}
+.office-app.ui-v2 :is(.market-symbols button.is-active,.chart-timeframes button[aria-pressed=true]){background:#fff;color:var(--text)!important}
+.office-app.ui-v2 .chart-toolbar h3{font:400 30px var(--serif)}
+.office-app.ui-v2 .chart-footnote{border-color:#ffffff14}
+
+/* ── Escritório: moldura branca em volta do palco ─────────────────────── */
+.office-app.ui-v2 .floor-topbar{height:58px;border:0;font-size:14px}
+.office-app.ui-v2 .floor-topbar>div>span{color:var(--muted);font-size:12px}
+.office-app.ui-v2 .floor-dot{background:var(--amber);border-radius:50%}
+.office-app.ui-v2 .floor-tools button{color:var(--muted);border-radius:999px}
+.office-app.ui-v2 .floor-tools button:hover{background:var(--soft);color:var(--text)}
+.office-app.ui-v2 .floor-tools .tour-button{border-color:var(--line);border-radius:999px}
+.office-app.ui-v2 .floor-tools .tour-button.is-on{background:var(--loss);border-color:var(--loss);color:#fff}
+.office-app.ui-v2 .floor-tools .camera-select{font:500 12px var(--ui)}
+.office-app.ui-v2 .floor-status{border:0;font-size:12px;color:var(--muted);padding:14px 18px}
+.office-app.ui-v2 .team-strip{border-top:1px solid var(--line);padding:12px}
+.office-app.ui-v2 .team-member{border-radius:14px}
+.office-app.ui-v2 .team-member:hover{background:var(--soft)}
+.office-app.ui-v2 .team-member.is-selected{background:var(--soft);border-color:transparent;box-shadow:inset 0 -2px 0 var(--agent-color)}
+.office-app.ui-v2 .team-member strong{font-size:13px;font-weight:600}
+.office-app.ui-v2 .team-member small{font-size:10px}
+
+/* Painel do agente */
+.office-app.ui-v2 .agent-panel-eyebrow{padding:22px 24px 14px}
+.office-app.ui-v2 .portrait-frame{border:0;border-radius:20px;background:radial-gradient(ellipse at 50% 70%,#2D4BF02e,#E7EAF0 70%)}
+.office-app.ui-v2 .agent-identity h2{font:400 46px/1 var(--serif);letter-spacing:-.02em}
+.office-app.ui-v2 .agent-identity p,.office-app.ui-v2 .agent-description{font-size:13px;color:var(--muted)}
+.office-app.ui-v2 .agent-state{font-size:12px}
+.office-app.ui-v2 .agent-locate{color:var(--amber)!important;font-size:12px}
+.office-app.ui-v2 .agent-tabs button{font-size:13px;color:var(--muted)}
+.office-app.ui-v2 .agent-tabs button[aria-selected=true]{color:var(--text)}
+.office-app.ui-v2 .agent-event p,.office-app.ui-v2 .chat-message p{font-size:13px}
+.office-app.ui-v2 .agent-panel-footer{border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+.office-app.ui-v2 .chat-message{background:var(--soft)!important;border-radius:16px}
+.office-app.ui-v2 .chat-user{background:#E8ECFF!important}
+.office-app.ui-v2 .chat-starters button{background:var(--panel);border:1px solid var(--line);border-radius:14px;font-size:12px!important}
+.office-app.ui-v2 .chat-form{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 5px 5px 14px}
+.office-app.ui-v2 .mood-meter{margin:0 22px 14px;padding:14px 16px}
+.office-app.ui-v2 .mood-meter p{font-size:12px}
+.office-app.ui-v2 .score-track{background:var(--soft)!important}
+
+/* Registro de atividade */
+.office-app.ui-v2 .office-events{margin-top:26px}
+.office-app.ui-v2 .events-title{border-bottom:1px solid var(--line);padding:20px 24px}
+.office-app.ui-v2 .events-title h2{font:400 26px var(--serif)}
+.office-app.ui-v2 .event-table-head{padding:12px 24px}
+.office-app.ui-v2 .event-row{border-top:1px solid var(--line);font-size:13px!important;padding:13px 24px}
+.office-app.ui-v2 .event-row:hover{background:var(--soft)}
+.office-app.ui-v2 .event-row small{font-size:11px;border-radius:999px;padding:3px 10px;background:#E6F4EE;color:var(--gain)}
+.office-app.ui-v2 .event-row .event-historical{background:#E8ECFF;color:var(--amber)}
+.office-app.ui-v2 .office-footer{font-size:12px;color:var(--muted)}
+
+/* Placar: uma faixa só, divisórias finas */
+.office-app.ui-v2 .goals-strip{gap:0;margin-bottom:26px;overflow:hidden}
+.office-app.ui-v2 .goal-card{background:none;border:0;border-left:1px solid var(--line);border-radius:0;padding:20px 22px}
+.office-app.ui-v2 .goal-card:first-child{border-left:0}
+.office-app.ui-v2 .goal-big{font:400 46px/1 var(--serif);color:var(--text)}
+.office-app.ui-v2 .goal-row b{font:400 24px var(--serif)}
+.office-app.ui-v2 .goal-bar{background:var(--soft)!important;height:6px}
+.office-app.ui-v2 .goal-bar i{background:var(--amber)}
+.office-app.ui-v2 .rule-row{font-size:12px}
+.office-app.ui-v2 .dots i{border-color:var(--line)}
+.office-app.ui-v2 .dots-win i.on{background:var(--gain);border-color:var(--gain)}
+.office-app.ui-v2 .dots-loss i.on{background:var(--loss);border-color:var(--loss)}
+.office-app.ui-v2 .badges span{font-size:11px;border-color:var(--line);color:var(--muted)}
+.office-app.ui-v2 .badges span.is-done{border-color:var(--amber);color:var(--amber);background:#E8ECFF}
+
+/* Radar */
+.office-app.ui-v2 .market-radar{overflow:hidden}
+.office-app.ui-v2 .radar-heading{padding:20px 24px}
+.office-app.ui-v2 .radar-heading h2{font:400 28px var(--serif)}
+.office-app.ui-v2 .radar-markets{gap:0;padding:0;border-top:1px solid var(--line)}
+.office-app.ui-v2 .radar-market{background:none;border:0;border-left:1px solid var(--line);border-radius:0;padding:18px 20px!important}
+.office-app.ui-v2 .radar-market:first-child{border-left:0}
+.office-app.ui-v2 .radar-market:hover{background:var(--soft)}
+.office-app.ui-v2 .radar-market strong{font:400 26px var(--serif)}
+.office-app.ui-v2 .radar-market small,.office-app.ui-v2 .radar-market p,.office-app.ui-v2 .radar-market>div>span{color:var(--muted);font-family:var(--ui)}
+.office-app.ui-v2 .radar-market b{font-size:13px;font-weight:500}
+.office-app.ui-v2 .radar-entry{background:#E6F4EE}
+.office-app.ui-v2 .radar-entry b{color:var(--gain)}
+.office-app.ui-v2 .radar-short{background:#FDECEC}
+.office-app.ui-v2 .radar-short b{color:var(--loss)}
+.office-app.ui-v2 :is(.radar-bottom,.radar-alert){border-top:1px solid var(--line);font-size:12px;color:var(--muted);padding:12px 24px}
+.office-app.ui-v2 .radar-alert-entry{background:#E6F4EE!important}
+
+/* Escola, gerente, propostas */
+.office-app.ui-v2 .school-row{font:400 13px var(--ui);border-top:1px solid var(--line);padding:12px 10px}
+.office-app.ui-v2 .school-row small{font:12px var(--ui)}
+.office-app.ui-v2 .school-name b{font:400 20px var(--serif);color:var(--text)}
+.office-app.ui-v2 .school-row.is-candidate{background:#E8ECFF;border-radius:12px}
+.office-app.ui-v2 .school-status{font:500 12px var(--ui)!important}
+.office-app.ui-v2 .st-aprovado{color:var(--gain)!important}.office-app.ui-v2 .st-reprovado,.office-app.ui-v2 .st-reprovado-prova{color:var(--loss)!important}.office-app.ui-v2 .st-aguardando{color:#B7791F!important}
+.office-app.ui-v2 :is(.school-promo,.manager-body ul li,.proposals-list li){background:var(--soft);border:0;border-radius:14px}
+.office-app.ui-v2 .school-promo.is-ready{box-shadow:inset 0 0 0 1px var(--amber)}
+.office-app.ui-v2 .manager-summary{font:400 22px/1.35 var(--serif)}
+.office-app.ui-v2 .manager-body ul li{font-size:13px;border-left:3px solid var(--muted)}
+.office-app.ui-v2 .manager-body .mg-ok{border-left-color:var(--gain)}.office-app.ui-v2 .manager-body .mg-alerta{border-left-color:var(--loss)}
+.office-app.ui-v2 .proposals-list li{border-left:3px solid var(--gain);padding:12px 16px}
+.office-app.ui-v2 .proposals-list li.is-blocked{border-left-color:var(--loss)}
+.office-app.ui-v2 .proposal-head{font-size:13px}
+.office-app.ui-v2 .proposal-head b{color:var(--gain)}
+.office-app.ui-v2 .is-blocked .proposal-head b{color:var(--loss)}
+.office-app.ui-v2 .proposal-checks span{background:#E6F4EE;color:var(--gain);border-radius:999px;padding:2px 9px;font-size:11px}
+.office-app.ui-v2 .proposal-checks span.no{background:#FDECEC;color:var(--loss)}
+.office-app.ui-v2 .proposals-list p{font-size:12px;color:var(--muted)}
+.office-app.ui-v2 .proposals-tally b{font:400 30px var(--serif)}
+
+/* ── Mesa demo: o número é a manchete ─────────────────────────────────── */
+.office-app.ui-v2 .demo-desk{gap:20px}
+.office-app.ui-v2 .desk-verdict{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px 40px;padding:34px 36px;border-left:1px solid var(--line)}
+.office-app.ui-v2 .desk-verdict h2{font:400 clamp(34px,3.4vw,52px)/1.02 var(--serif);margin:6px 0 12px;max-width:20ch}
+.office-app.ui-v2 .desk-verdict.v-positivo h2{color:var(--gain)}
+.office-app.ui-v2 .desk-verdict.v-negativo h2{color:var(--loss)}
+.office-app.ui-v2 .desk-verdict p{font-size:15px;color:var(--muted);max-width:58ch}
+.office-app.ui-v2 .desk-hero{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;text-align:right;border-left:1px solid var(--line);padding-left:36px}
+.office-app.ui-v2 .desk-hero>span{font-size:13px;color:var(--muted)}
+.office-app.ui-v2 .desk-hero b{font:400 clamp(56px,6.4vw,104px)/1 var(--serif);letter-spacing:-.03em;margin:8px 0 10px}
+.office-app.ui-v2 .desk-status{grid-column:1;justify-self:start;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 13px}
+.office-app.ui-v2 .desk-kpis{gap:0;overflow:hidden}
+.office-app.ui-v2 .desk-kpis>div{background:none;border:0;border-left:1px solid var(--line);border-radius:0;padding:22px 24px}
+.office-app.ui-v2 .desk-kpis>div:first-child{border-left:0}
+.office-app.ui-v2 .desk-kpis span{font-size:12px;color:var(--muted);text-transform:none;letter-spacing:0}
+.office-app.ui-v2 .desk-kpis b{font:400 38px/1.05 var(--serif)}
+.office-app.ui-v2 .desk-progress{background:var(--panel)!important;border:1px solid var(--line);border-radius:999px;height:28px}
+.office-app.ui-v2 .desk-progress i{background:#E8ECFF}
+.office-app.ui-v2 .desk-progress span{font:500 12px/28px var(--ui)}
+.office-app.ui-v2 .daily-today>div{background:var(--soft)!important;border:0;border-radius:16px;padding:16px 18px}
+.office-app.ui-v2 .daily-today span{font:500 12px var(--ui);letter-spacing:0;text-transform:none;color:var(--muted)}
+.office-app.ui-v2 .daily-today b{font:400 34px/1.05 var(--serif)}
+.office-app.ui-v2 .daily-today .g b,.office-app.ui-v2 .daily-today .n.pos b{color:var(--gain)}
+.office-app.ui-v2 .daily-today .l b,.office-app.ui-v2 .daily-today .n.neg b{color:var(--loss)}
+.office-app.ui-v2 .daily-list li{border-top:1px solid var(--line);font-size:13px}
+.office-app.ui-v2 .daily-list li.is-today{background:var(--soft)!important;border-radius:12px}
+.office-app.ui-v2 .desk-table{font-size:13px}
+.office-app.ui-v2 .desk-table th{background:var(--panel)!important;border-bottom:1px solid var(--line);padding:10px}
+.office-app.ui-v2 .desk-table td{font-family:var(--ui);border-bottom:1px solid var(--line);padding:12px 10px}
+.office-app.ui-v2 .pos-track-bar{height:6px;background:linear-gradient(90deg,#FDECEC,var(--soft) 50%,#E6F4EE)}
+.office-app.ui-v2 .pos-track-bar i.entry{background:var(--muted)}
+.office-app.ui-v2 .pos-track-bar i.mark{border-color:#fff}
+.office-app.ui-v2 .pos-track.good .mark{background:var(--gain)}.office-app.ui-v2 .pos-track.bad .mark{background:var(--loss)}
+.office-app.ui-v2 .pos-track.good small{color:var(--gain)}.office-app.ui-v2 .pos-track.bad small{color:var(--loss)}
+
+/* Estação de trabalho */
+.office-app.ui-v2 .agent-focus-nav>button{color:var(--amber)}
+.office-app.ui-v2 .workstation-title h2{font:400 36px var(--serif)}
+.office-app.ui-v2 .trader-task-status{background:var(--soft)!important;border:0;border-radius:16px}
+.office-app.ui-v2 .trader-decision strong{font:400 22px var(--serif)}
+.office-app.ui-v2 .focused-markets>div{background:var(--soft)!important;border:0;border-radius:16px}
+
+/* Navegação inferior do celular */
+.office-app.ui-v2 .mobile-nav{background:var(--panel)!important;border-top:1px solid var(--line)}
+
+@media(max-width:1200px){.office-app.ui-v2 .goal-card{border-left:0;border-top:1px solid var(--line)}}
+@media(max-width:950px){.office-app.ui-v2 .desk-verdict{grid-template-columns:1fr}.office-app.ui-v2 .desk-hero{align-items:flex-start;text-align:left;border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:18px}}
+@media(max-width:650px){
+  .office-app.ui-v2 .office-title-row h1{font-size:40px}
+  .office-app.ui-v2 .desk-verdict{padding:22px}
+  .office-app.ui-v2 .desk-verdict h2{font-size:34px}
+  .office-app.ui-v2 .desk-hero b{font-size:60px}
+  .office-app.ui-v2 .desk-kpis>div{border-left:0;border-top:1px solid var(--line)}
+  .office-app.ui-v2 .desk-kpis b{font-size:30px}
+  .office-app.ui-v2 .office-wordmark{font-size:22px}
+  .office-app.ui-v2 .office-wordmark span{display:none}
+  .office-app.ui-v2 .view-tabs{border-radius:16px}
+  .office-app.ui-v2 .office-scene-wrap{margin:0 6px}
+  .office-app.ui-v2 .radar-market{border-left:0;border-top:1px solid var(--line)}
+}
+
+/* Ajustes de largura */
+.office-app.ui-v2 :is(.office-wordmark,.classic-button,.floor-topbar>div>span,.floor-topbar>div:first-child){white-space:nowrap}
+.office-app.ui-v2 .office-title-row h1{max-width:none}
+.office-app.ui-v2 .floor-topbar{gap:12px}
+@media(max-width:1250px){.office-app.ui-v2 .office-breadcrumb,.office-app.ui-v2 .header-divider{display:none}.office-app.ui-v2 .floor-topbar>div>span{display:none}}
+@media(max-width:1000px){.office-app.ui-v2 .classic-button{font-size:0!important;padding:8px}}
+/* Divisórias finas entre células, em qualquer número de colunas */
+.office-app.ui-v2 :is(.desk-kpis>div,.goal-card,.radar-market){border:0!important;box-shadow:-1px -1px 0 var(--line)}
+
+/* ── Sem cara de IA (revisão com a skill frontend-design) ─────────────────
+   Sem rótulo em cima de título, sem seta colada em botão, sem emoji decorativo,
+   e cantos por hierarquia: painéis 12px, linhas e botões 8px, etiquetas 4px. */
+.office-app.ui-v2 :is(.office-eyebrow,.agent-panel-eyebrow,.events-title>div>span,.school-board header .goal-eyebrow,.manager-card header .goal-eyebrow,.proposals-card header .goal-eyebrow,.emoji,.ficha-emoji){display:none}
+.office-app.ui-v2 :is(.events-title>button,.chat-starters button,.agent-action) svg:last-child{display:none}
+@media(min-width:1001px){.office-app.ui-v2 .classic-button svg{display:none}}
+.office-app.ui-v2 .agent-identity{padding-top:22px}
+.office-app.ui-v2 .office-title-row h1{font-size:clamp(44px,5vw,76px)}
+
+.office-app.ui-v2 :is(.floor-column,.agent-panel,.office-events,.school-board,.manager-card,.proposals-card,.market-radar,.desk-verdict,.desk-box,.agent-workspace,.daily-board,.mood-meter,.goals-strip,.desk-kpis,.market-chart-panel,.trader-chart){border-radius:12px}
+.office-app.ui-v2 .office-scene-wrap{border-radius:8px}
+.office-app.ui-v2 .ficha{border-radius:10px}
+.office-app.ui-v2 :is(.school-row.is-candidate,.school-promo,.manager-body ul li,.proposals-list li,.daily-today>div,.daily-list li.is-today,.trader-task-status,.focused-markets>div,.chat-message,.chat-starters button,.team-member,.portrait-frame){border-radius:8px}
+.office-app.ui-v2 :is(.agent-action,.school-run button,.radar-controls button,.classic-button,.demo-badge,.connection-pill,.desk-status,.ui-switch,.ui-switch button,.floor-tools button,.floor-tools .tour-button,.chat-form,.chat-form button,.market-symbols,.market-symbols button,.chart-timeframes,.chart-timeframes button,.scene-cam-hud,.desk-progress){border-radius:8px}
+.office-app.ui-v2 .ui-switch button{border-radius:6px}
+.office-app.ui-v2 .market-symbols button,.office-app.ui-v2 .chart-timeframes button{border-radius:6px}
+.office-app.ui-v2 :is(.event-row small,.proposal-checks span,.badges span){border-radius:4px}
+.office-app.ui-v2 .office-nameplate{border-radius:6px}
+
+/* Abas: texto com régua embaixo, em vez de pílulas */
+.office-app.ui-v2 .view-tabs{border:0;border-bottom:1px solid var(--line);background:none;border-radius:0;padding:0;gap:0;width:auto;margin:-8px 0 34px}
+.office-app.ui-v2 .view-tabs button{border-radius:0;padding:12px 0 14px;margin-right:32px;font-size:14px!important;background:none!important}
+.office-app.ui-v2 .view-tabs button.is-active{color:var(--text);background:none}
+.office-app.ui-v2 .view-tabs button.is-active:after{display:block;left:0;right:0;height:2px;background:var(--text);border-radius:0}
+.office-app.ui-v2 .view-tabs button svg{display:none}
+.office-app.ui-v2 .agent-action{font-size:13px!important;padding:11px 14px}
+.office-app.ui-v2 .agent-locate svg{display:none}
+@media(max-width:1000px){.office-app.ui-v2 .classic-button{display:none}}
+
+/* ── Tipografia Archivo: largura faz o papel que a serifa fazia ───────── */
+.office-app.ui-v2 :is(h1,h2,h3,.office-wordmark,.agent-identity h2,.ficha-head strong,.radar-market strong,.school-name b,.manager-summary,.chart-toolbar h3,.workstation-title h2,.events-title h2){
+  font-family:'Archivo',sans-serif;font-stretch:115%;font-weight:650;letter-spacing:-.025em;font-style:normal}
+.office-app.ui-v2 .office-title-row h1{font-weight:700;font-stretch:118%;letter-spacing:-.04em}
+.office-app.ui-v2 :is(.desk-hero b,.desk-kpis b,.goal-big,.goal-row b,.daily-today b,.proposals-tally b,.trader-decision strong){
+  font-family:'Archivo',sans-serif;font-stretch:78%;font-weight:600;letter-spacing:-.02em;font-style:normal}
+.office-app.ui-v2 .desk-hero b{font-weight:700}
+.office-app.ui-v2 .office-wordmark span,.office-app.ui-v2 .ficha-head em{font-style:normal;font-stretch:115%;font-weight:500}
+.office-app.ui-v2 .office-wordmark{font-size:20px}.office-app.ui-v2 .office-wordmark span{font-size:20px}
+.office-app.ui-v2 .tick b{font:600 14px 'Archivo',sans-serif;font-stretch:115%;font-style:normal}
+.office-app.ui-v2 .office-logo span{font:700 26px/1 'Archivo',sans-serif;font-stretch:118%;font-style:normal;margin-top:-3px}
+.office-app.ui-v2 .manager-summary{font-weight:500;font-stretch:100%;font-size:18px;letter-spacing:-.01em}
+.office-app.ui-v2 .school-name b{font-size:16px}
+.office-app.ui-v2 :is(.school-board,.manager-card,.proposals-card,.desk-box,.daily-board) h3{font-size:22px}
+.office-app.ui-v2 .events-title h2,.office-app.ui-v2 .radar-heading h2{font-size:20px}
+.office-app.ui-v2 .radar-market strong{font-size:20px}
+.office-app.ui-v2 .agent-identity h2{font-size:36px}
+.office-app.ui-v2 .desk-verdict h2{font-size:clamp(28px,2.8vw,42px)}

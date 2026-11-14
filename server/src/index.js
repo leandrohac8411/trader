@@ -49,7 +49,7 @@ if (SERVERLESS) {
 if (APP_PASSWORD) app.use(basicAuth({ user: APP_USER, password: APP_PASSWORD, open: ["/api/health", "/api/bot/tick"] }));
 // Modo Redis: cada requisição carrega os dados no começo e grava o que mudou antes de responder.
 // Dados públicos de mercado (velas, cotações) não tocam no banco: não gastam banda do Upstash.
-const NO_STORAGE = /^/api/bybit//;
+const NO_STORAGE = { test: (path) => path.startsWith("/api/bybit/") };
 app.use((req, res, next) => {
   if (!isRedis() || NO_STORAGE.test(req.path)) return next();
   withContext(async () => {

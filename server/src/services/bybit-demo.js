@@ -189,6 +189,21 @@ export async function closeMarket({ symbol, side, qty }) {
 }
 
 /** PnL realizado das últimas posições fechadas de um símbolo. */
+/** Execuções (negócios) desde startTime. A Bybit publica na hora, ao contrário do closed-pnl. */
+export async function getExecutions({ symbol, startTime, limit = 100 }) {
+  const res = await priv("GET", "/v5/execution/list", { category: "linear", symbol, startTime, limit });
+  return (res.list || []).map((e) => ({
+    symbol: e.symbol,
+    side: e.side,
+    price: Number(e.execPrice),
+    qty: Number(e.execQty),
+    fee: Number(e.execFee) || 0,
+    closedSize: Number(e.closedSize) || 0,
+    execType: e.execType,
+    time: Number(e.execTime),
+  }));
+}
+
 export async function getClosedPnl({ symbol, limit = 20 }) {
   const res = await priv("GET", "/v5/position/closed-pnl", { category: "linear", symbol, limit });
   return (res.list || []).map((p) => ({

@@ -297,3 +297,34 @@ test("entrada atrasada: só entra se ainda sobrar ganho/risco mínimo a partir d
   assert.equal(entryStillValid({ dir: "LONG", live: 100, stop: 95, tp: 108, minRR: 1.5 }), true); // 1,6R
   assert.equal(entryStillValid({ dir: "LONG", live: 102, stop: 95, tp: 108, minRR: 1.5 }), false); // 0,86R
 });
+
+test("closeFromExecutions: monta o fechamento pelas execuções quando o closed-pnl atrasa", async () => {
+  const { closeFromExecutions, findClose, closeTradeLine } = await import("../src/services/bot.js");
+  // SOL 1h de 14/11: vendida 332,4 a 75,51, alvo 69,00592
+  const open = { side: "Sell", qty: 332.4, entry: 75.51, stop: 80.98204, tp: 69.00592, riskUsd: 1818.91, openedAt: 1_000_000 };
+  const execs = [
+    { side: "Buy", price: 79.0, qty: 300, fee: 1, closedSize: 300, time: 900_000 }, // fechamento de OUTRA posição, antes da abertura
+    { side: "Sell", price: 75.51, qty: 332.4, fee: 13.8, closedSize: 0, time: 1_000_100 }, // abertura
+    { side: "Buy", price: 69.0, qty: 200, fee: 7.6, closedSize: 200, time: 2_000_000 },
+    { side: "Buy", price: 69.02, qty: 132.4, fee: 5.0, closedSize: 132.4, time: 2_000_050 },
+  ];
+  const c = closeFromExecutions(execs, open);
+  assert.ok(c);
+  assert.equal(c.closedAt, 2_000_050);
+  assert.ok(Math.abs(c.exit - (200 * 69 + 132.4 * 69.02) / 332.4) < 1e-9);
+  const gross = (75.51 - c.exit) * 332.4;
+  assert.ok(Math.abs(c.closedPnl - (gross - 7.6 - 5.0 - 13.8)) < 1e-6);
+  const line = closeTradeLine({ symbol: "SOLUSDT", tf: "60", open, c });
+  assert.equal(line.reason, "tp");
+  assert.equal(line.source, "executions");
+  assert.ok(line.netR > 1.15 && line.netR < 1.2, String(line.netR));
+  // fechamento parcial ainda não conta
+  assert.equal(closeFromExecutions(execs.slice(0, 3), open), null);
+  // sem quantidade conhecida não chuta
+  assert.equal(closeFromExecutions(execs, { ...open, qty: null }), null);
+  // findClose: usa o closed-pnl quando existe, senão as execuções
+  const fromPnl = await findClose({ getClosedPnl: async () => [{ qty: 332.4, exit: 69, closedPnl: 2100, closedAt: 2_000_100 }], getExecutions: async () => { throw new Error("não deveria chamar"); } }, "SOLUSDT", open);
+  assert.equal(fromPnl.closedPnl, 2100);
+  const fromExec = await findClose({ getClosedPnl: async () => [], getExecutions: async () => execs }, "SOLUSDT", open);
+  assert.equal(fromExec.source, "executions");
+});

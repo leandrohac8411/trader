@@ -52,7 +52,7 @@ export function reachedBreakeven({ side, entry, stop0, candles, openedAt, atR })
   return fav >= atR * risk;
 }
 
-export const PENDING_CLOSE_MS = 6 * 3_600_000;
+export const PENDING_CLOSE_MS = 24 * 3_600_000;
 
 /** O fechamento da corretora que corresponde a esta posição (o mais recente depois da abertura). */
 export function matchClose(closed, open) {
@@ -61,6 +61,38 @@ export function matchClose(closed, open) {
     .filter((x) => x.closedAt >= open.openedAt - 5_000)
     .filter((x) => !(qty > 0) || !(x.qty > 0) || Math.abs(x.qty - qty) / qty < 0.02)
     .sort((x, y) => y.closedAt - x.closedAt)[0] || null;
+}
+
+/**
+ * Fechamento montado pelas execuções, quando o closed-pnl da Bybit atrasa (na demo já levou horas).
+ * Soma as execuções do lado oposto que fecharam posição depois da abertura até cobrir a quantidade.
+ * Resultado = (saída − entrada) × qtd no sentido do trade − taxas das execuções da abertura e do fechamento.
+ */
+export function closeFromExecutions(execs, open) {
+  const qty = Number(open?.qty);
+  if (!(qty > 0) || !Array.isArray(execs)) return null;
+  const from = (open.openedAt || 0) - 5_000;
+  const list = execs.filter((e) => e.time >= from && (!e.execType || e.execType === "Trade")).sort((a, b) => a.time - b.time);
+  const closeSide = open.side === "Buy" ? "Sell" : "Buy";
+  let filled = 0, value = 0, fees = 0, last = null;
+  for (const e of list) {
+    if (e.side !== closeSide || !(e.closedSize > 0)) continue;
+    const q = Math.min(e.closedSize, qty - filled);
+    filled += q; value += q * e.price; fees += e.fee * (q / e.qty || 1); last = e.time;
+    if (filled >= qty * 0.98) break;
+  }
+  if (filled < qty * 0.98) return null;
+  const openFees = list.filter((e) => e.side === open.side && !(e.closedSize > 0) && e.time <= last).reduce((s, e) => s + e.fee, 0);
+  const exit = value / filled;
+  const dir = open.side === "Buy" ? 1 : -1;
+  return { qty: filled, exit, closedPnl: dir * (exit - open.entry) * filled - fees - openFees, closedAt: last, source: "executions" };
+}
+
+/** Fechamento da posição: o registro da Bybit (closed-pnl) ou, se ainda não saiu, as execuções. */
+export async function findClose(demo, symbol, open) {
+  const c = matchClose(await demo.getClosedPnl({ symbol, limit: 50 }), open);
+  if (c || !demo.getExecutions) return c;
+  return closeFromExecutions(await demo.getExecutions({ symbol, startTime: Math.max(0, (open.openedAt || 0) - 5_000), limit: 100 }), open);
 }
 
 /** Linha do trade a partir da posição e do fechamento da corretora. */
@@ -79,6 +111,7 @@ export function closeTradeLine({ symbol, tf, open, c }) {
     netR: Number((riskUsd > 0 ? pnl / riskUsd : 0).toFixed(3)),
     netPnlPct: notional > 0 ? Number(((pnl / notional) * 100).toFixed(3)) : 0,
     pnlUsd: Number(pnl.toFixed(4)), probability: open.prob ?? null, openedAt: open.openedAt, closedAt: c.closedAt ?? Date.now(),
+    ...(c.source ? { source: c.source } : {}),
   };
 }
 
@@ -435,7 +468,7 @@ export async function tickOnce() {
       const still = [];
       for (const p of s.pendingCloses) {
         let c = null;
-        try { c = matchClose(await demo.getClosedPnl({ symbol: p.symbol, limit: 50 }), p.open); } catch { /* tenta na próxima */ }
+        try { c = await findClose(demo, p.symbol, p.open); } catch { /* tenta na próxima */ }
         if (c) {
           const tradeLine = closeTradeLine({ symbol: p.symbol, tf: p.tf, open: p.open, c });
           appendTrade(tradeLine);
@@ -444,7 +477,7 @@ export async function tickOnce() {
         } else if (Date.now() - p.since > PENDING_CLOSE_MS) {
           appendEvent({ type: "unreconciled", symbol: p.symbol, tf: p.tf, dir: p.open.side === "Buy" ? "LONG" : "SHORT",
             entry: p.open.entry, openedAt: p.open.openedAt });
-          log.push(`${p.symbol}|${p.tf}: sem registro de fechamento depois de 6 h — trade não contabilizado`);
+          log.push(`${p.symbol}|${p.tf}: sem registro de fechamento depois de 24 h — trade não contabilizado`);
         } else still.push(p);
       }
       s.pendingCloses = still;
@@ -534,7 +567,7 @@ export async function tickOnce() {
           const sameSide = still && still.side === (ks.open.side);
           if (!sameSide) {
             try {
-              const c = matchClose(await demo.getClosedPnl({ symbol, limit: 50 }), ks.open);
+              const c = await findClose(demo, symbol, ks.open);
               if (c) {
                 const tradeLine = closeTradeLine({ symbol, tf, open: ks.open, c });
                 appendTrade(tradeLine);

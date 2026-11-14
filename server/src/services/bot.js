@@ -26,16 +26,36 @@ const MAX_EVENTS = 500; // a tela lê no máximo 300; menos dados = menos banda 
  *   v1: a configuração antiga (perdeu −12% em 3 anos).
  *   v2: score ≥ 90, alvo 3R, SuperTrend 4 (melhor candidata em 1h+4h: +60%, queda máx. −21%).
  */
+//   v3 (13/11, depois da correção do simulador): só 1h, alvo 2R, score ≥ 90, SuperTrend 4 e stop no
+//      empate quando a posição anda 1,5R a favor (+74% em 3 anos, queda máx. −22%; v2 caiu para +2%).
 export const STRATEGY_PROFILES = {
-  v1: { minProb: 85, rr1: 1.5, stMult: 3 },
-  v2: { minProb: 90, rr1: 3, stMult: 4 },
+  v1: { minProb: 85, rr1: 1.5, stMult: 3, breakevenAtR: null },
+  v2: { minProb: 90, rr1: 3, stMult: 4, breakevenAtR: null },
+  v3: { minProb: 90, rr1: 2, stMult: 4, breakevenAtR: 1.5, timeframes: ["60"] },
 };
 
 export function profileParams(profile, env = process.env) {
   if (profile === "custom") {
-    return { minProb: Number(env.BOT_MIN_PROB || 90), rr1: Number(env.BOT_RR1 || 3), stMult: Number(env.BOT_ST_MULT || 4) };
+    return { minProb: Number(env.BOT_MIN_PROB || 90), rr1: Number(env.BOT_RR1 || 3), stMult: Number(env.BOT_ST_MULT || 4),
+      breakevenAtR: env.BOT_BREAKEVEN_R ? Number(env.BOT_BREAKEVEN_R) : null };
   }
-  return { ...(STRATEGY_PROFILES[profile] || STRATEGY_PROFILES.v2) };
+  return { ...(STRATEGY_PROFILES[profile] || STRATEGY_PROFILES.v3) };
+}
+
+/** Stop no empate: o preço andou `atR` vezes o risco a favor desde a entrada (velas fechadas)? */
+export function reachedBreakeven({ side, entry, stop0, candles, openedAt, atR }) {
+  const risk = Math.abs(entry - stop0);
+  if (!atR || !(risk > 0)) return false;
+  const after = (candles || []).filter((c) => c.ts >= openedAt);
+  if (!after.length) return false;
+  const fav = side === "Buy" ? Math.max(...after.map((c) => c.high)) - entry : entry - Math.min(...after.map((c) => c.low));
+  return fav >= atR * risk;
+}
+
+/** Períodos que o tick percorre num ativo: os do perfil + os de posições ainda abertas (só para acompanhar). */
+export function tickTimeframes(symbol, timeframes, keys = {}) {
+  const open = Object.entries(keys).filter(([k, v]) => v?.open && k.startsWith(`${symbol}|`)).map(([k]) => k.split("|")[1]);
+  return [...new Set([...timeframes, ...open])];
 }
 
 export const CFG = {
@@ -51,8 +71,9 @@ export const CFG = {
   // Máquina do Tempo antes de cada entrada (timemachine.js). Desligue com BOT_TIMEMACHINE=0.
   timeMachine: process.env.BOT_TIMEMACHINE !== "0",
   // Perfil da estratégia (ver STRATEGY_PROFILES). "custom" usa BOT_MIN_PROB/BOT_RR1/BOT_ST_MULT.
-  profile: process.env.BOT_PROFILE || "v2",
-  ...profileParams(process.env.BOT_PROFILE || "v2"),
+  // (um perfil com `timeframes`, como o v3, substitui BOT_TIMEFRAMES)
+  profile: process.env.BOT_PROFILE || "v3",
+  ...profileParams(process.env.BOT_PROFILE || "v3"),
   reentryCooldown: Number(process.env.BOT_REENTRY_COOLDOWN || 10),
   dailyLossLimitPct: Number(process.env.BOT_DAILY_LOSS_LIMIT_PCT || 4),
   maxOpen: Number(process.env.BOT_MAX_OPEN || 3),
@@ -353,8 +374,10 @@ export async function tickOnce() {
     let opensThisTick = 0;
 
     for (const symbol of CFG.symbols) {
-      for (const tf of CFG.timeframes) {
+      for (const tf of tickTimeframes(symbol, CFG.timeframes, s.keys)) {
         const key = `${symbol}|${tf}`;
+        // período fora do perfil (ex.: 4h depois da troca para o v3): só acompanha a posição aberta
+        const manageOnly = !CFG.timeframes.includes(tf);
         const ks = (s.keys[key] ||= {
           lastSignal: null,
           lastExitTs: 0,
@@ -452,7 +475,7 @@ export async function tickOnce() {
                   ? "unknown"
                   : Math.abs(exit - ks.open.tp) < Math.abs(exit - ks.open.stop)
                   ? "tp"
-                  : "stop";
+                  : ks.open.beMoved ? "be" : "stop";
               const tradeLine = {
                 symbol,
                 tf,
@@ -480,6 +503,26 @@ export async function tickOnce() {
             openCount = Math.max(0, openCount - 1);
           }
         }
+
+        // stop no empate (perfil v3): andou X R a favor numa vela fechada → stop vai para a entrada
+        if (ks.open && CFG.breakevenAtR && !ks.open.beMoved && posBySymbol[symbol]?.side === ks.open.side
+          && reachedBreakeven({ side: ks.open.side, entry: ks.open.entry, stop0: ks.open.stop0 ?? ks.open.stop,
+            candles, openedAt: ks.open.openedAt, atR: CFG.breakevenAtR })) {
+          try {
+            const instr = await demo.getInstrument(symbol);
+            const be = roundToStep(ks.open.entry, instr.tickSize);
+            if (!CFG.dryRun) await demo.setTradingStop({ symbol, stopLoss: be });
+            ks.open.stop0 ??= ks.open.stop;
+            ks.open.stop = be;
+            ks.open.beMoved = true;
+            appendEvent({ type: "breakeven", symbol, tf, dir: ks.open.side === "Buy" ? "LONG" : "SHORT", entry: ks.open.entry, stop: be });
+            log.push(`${key}: andou ${CFG.breakevenAtR}R a favor — stop no empate (${be})`);
+          } catch (e) {
+            log.push(`${key}: erro ao subir o stop para o empate ${e.message}`);
+          }
+        }
+
+        if (manageOnly) continue;
 
         // sem posição nossa → talvez abrir (no dry-run o teto de "abertas" não se aplica,
         // já que nada fica de fato aberto — assim dá pra ver o bot decidindo ao longo do tempo)

@@ -148,3 +148,15 @@ test("Vera: o aluno do stop no empate passa a regra para o simulador", async () 
   assert.deepEqual(sanitizeParams(vera.params), { breakevenAtR: 1.5 });
   assert.deepEqual(sanitizeParams({ breakevenAtR: 99 }), { breakevenAtR: 3 }); // limitado
 });
+
+test("escola tem base fixa (v2) e a Lara representa o bot v3", async () => {
+  const { STUDENTS, SCHOOL_BASE, gradeStudent } = await import("../src/services/school.js");
+  assert.deepEqual(SCHOOL_BASE, { minProbEntry: 90, rr1: 3, stMult: 4 });
+  const lara = STUDENTS.find((s) => s.id === "atual");
+  assert.deepEqual(lara.params, { rr1: 2, breakevenAtR: 1.5 });
+  const seen = [];
+  gradeStudent(lara, [{ symbol: "X", candles: [{ ts: 1 }] }], { baseParams: SCHOOL_BASE, backtest: (c, o) => { seen.push(o); return { tradeList: [] }; } });
+  assert.equal(seen[0].rr1, 2);
+  assert.equal(seen[0].breakevenAtR, 1.5);
+  assert.equal(seen[0].stMult, 4);
+});

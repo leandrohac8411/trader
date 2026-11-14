@@ -153,16 +153,39 @@ test("strategyParams só usa o aluno promovido com BOT_SCHOOL_PROMOTE", async ()
   assert.deepEqual(strategyParams({ cfg: { minProb: 85, schoolPromote: true }, promotion }), { minProbEntry: 75, rr1: 2 });
 });
 
-test("perfil v2 é o padrão: score ≥ 90, alvo 3R, SuperTrend 4", async () => {
+test("perfil v3 é o padrão: 1h, score ≥ 90, alvo 2R, SuperTrend 4, empate em 1,5R", async () => {
   const { profileParams, strategyParams, CFG } = await import("../src/services/bot.js");
-  assert.deepEqual(profileParams("v2"), { minProb: 90, rr1: 3, stMult: 4 });
-  assert.deepEqual(profileParams("v1"), { minProb: 85, rr1: 1.5, stMult: 3 });
-  assert.deepEqual(profileParams("desconhecido"), { minProb: 90, rr1: 3, stMult: 4 });
+  assert.deepEqual(profileParams("v3"), { minProb: 90, rr1: 2, stMult: 4, breakevenAtR: 1.5, timeframes: ["60"] });
+  assert.deepEqual(profileParams("v2"), { minProb: 90, rr1: 3, stMult: 4, breakevenAtR: null });
+  assert.deepEqual(profileParams("v1"), { minProb: 85, rr1: 1.5, stMult: 3, breakevenAtR: null });
+  assert.deepEqual(profileParams("desconhecido"), profileParams("v3"));
   // BOT_MIN_PROB antigo só vale no perfil custom
-  assert.deepEqual(profileParams("custom", { BOT_MIN_PROB: "88", BOT_RR1: "2" }), { minProb: 88, rr1: 2, stMult: 4 });
-  if (!process.env.BOT_PROFILE) assert.deepEqual(strategyParams({ cfg: { ...CFG, schoolPromote: false } }), { minProbEntry: 90, rr1: 3, stMult: 4 });
+  assert.deepEqual(profileParams("custom", { BOT_MIN_PROB: "88", BOT_RR1: "2" }), { minProb: 88, rr1: 2, stMult: 4, breakevenAtR: null });
+  if (!process.env.BOT_PROFILE) {
+    assert.deepEqual(strategyParams({ cfg: { ...CFG, schoolPromote: false } }), { minProbEntry: 90, rr1: 2, stMult: 4 });
+    assert.deepEqual(CFG.timeframes, ["60"]);
+    assert.equal(CFG.breakevenAtR, 1.5);
+  }
   assert.deepEqual(strategyParams({ cfg: { minProb: 90, rr1: 3, stMult: 4, schoolPromote: true }, promotion: { params: { rr1: 2 } } }),
     { minProbEntry: 90, rr1: 2, stMult: 4 });
+});
+
+test("reachedBreakeven: só conta velas fechadas depois da entrada", async () => {
+  const { reachedBreakeven } = await import("../src/services/bot.js");
+  const base = { side: "Sell", entry: 100, stop0: 104, openedAt: 1000, atR: 1.5 }; // risco 4 → empate em 94
+  const c = (ts, low, high) => ({ ts, low, high });
+  assert.equal(reachedBreakeven({ ...base, candles: [c(500, 90, 101), c(1000, 95, 101)] }), false); // a vela de 500 é antes da entrada
+  assert.equal(reachedBreakeven({ ...base, candles: [c(1000, 95, 101), c(2000, 94, 99)] }), true);
+  assert.equal(reachedBreakeven({ ...base, side: "Buy", stop0: 96, candles: [c(1000, 99, 105.9)] }), false);
+  assert.equal(reachedBreakeven({ ...base, side: "Buy", stop0: 96, candles: [c(1000, 99, 106)] }), true);
+  assert.equal(reachedBreakeven({ ...base, atR: null, candles: [c(2000, 50, 99)] }), false);
+});
+
+test("tickTimeframes: continua acompanhando posição aberta num período fora do perfil", async () => {
+  const { tickTimeframes } = await import("../src/services/bot.js");
+  const keys = { "SOLUSDT|240": { open: { side: "Sell" } }, "ETHUSDT|240": { open: null }, "SOLUSDT|60": { open: null } };
+  assert.deepEqual(tickTimeframes("SOLUSDT", ["60"], keys), ["60", "240"]);
+  assert.deepEqual(tickTimeframes("ETHUSDT", ["60"], keys), ["60"]);
 });
 
 test("isRecordedTrade descarta fechamentos não encontrados na corretora", async () => {

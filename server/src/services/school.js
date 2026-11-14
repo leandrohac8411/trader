@@ -21,10 +21,12 @@ export const PARAM_BOUNDS = {
   breakevenAtR: [0.5, 3],
 };
 
-// Os parâmetros de cada aluno se somam aos do bot (perfil v2: score ≥ 90, alvo 3R, SuperTrend 4).
+// Base fixa da escola: perfil v2 (score ≥ 90, alvo 3R, SuperTrend 4). Os parâmetros de cada aluno se somam a ela,
+// então trocar o perfil do bot não muda o que cada aluno testa.
+export const SCHOOL_BASE = { minProbEntry: 90, rr1: 3, stMult: 4 };
 // interval: período das velas do aluno (padrão: o da escola, 1h).
 export const STUDENTS = [
-  { id: "base", name: "Bia", emoji: "📘", color: "#8fb3ff", style: "Faz exatamente o que o bot faz hoje (score ≥ 90, alvo 3R, SuperTrend 4)", params: {} },
+  { id: "base", name: "Bia", emoji: "📘", color: "#8fb3ff", style: "Perfil v2, o bot até 13/11 (score ≥ 90, alvo 3R, SuperTrend 4)", params: {} },
   { id: "antigo", name: "Rafa", emoji: "🕰️", color: "#9aa7ad", style: "O bot antigo (score ≥ 85, alvo 1,5R, SuperTrend 3), para comparar", params: { minProbEntry: 85, rr1: 1.5, stMult: 3 } },
   { id: "alvo", name: "Hugo", emoji: "🏹", color: "#7fe0a6", style: "Candidata: alvo 2R", params: { rr1: 2 } },
   { id: "quatro", name: "Lia", emoji: "🌙", color: "#6fd3e0", style: "Candidata 4h: alvo 2R, SuperTrend 3", interval: "240", params: { rr1: 2, stMult: 3 } },
@@ -34,6 +36,7 @@ export const STUDENTS = [
   { id: "lento", name: "Nina", emoji: "🐢", color: "#c7a0ff", style: "Médias lentas (EMA 30/100)", params: { emaFast: 30, emaSlow: 100 } },
   { id: "largo", name: "Theo", emoji: "🧱", color: "#ffa66b", style: "Stop no swing de 10 velas", params: { lookback: 10 } },
   { id: "empate", name: "Vera", emoji: "🛡️", color: "#9fd8c4", style: "Igual ao bot, mas sobe o stop para a entrada quando chega a 50% do alvo (1,5R)", params: { breakevenAtR: 1.5 } },
+  { id: "atual", name: "Lara", emoji: "🧭", color: "#f2b56b", style: "O bot de hoje (perfil v3): 1h, alvo 2R, stop no empate em 1,5R", params: { rr1: 2, breakevenAtR: 1.5 } },
 ];
 
 // Troca de turma (13/11/2026: bot passou ao perfil v2). Mudar a turma zera o papel:

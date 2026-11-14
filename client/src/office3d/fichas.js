@@ -5,7 +5,7 @@ export const FICHAS = {
   analyst: { emoji: '📡', title: 'a analista', traits: [['Superpoder', 'vigia 5 mercados ao mesmo tempo'], ['Ponto fraco', 'terceiro café antes das 10h'], ['Mantra', 'score não é chance de lucro']] },
   risk: { emoji: '🛡️', title: 'o gerente de risco', traits: [['Superpoder', 'diz “não” com elegância'], ['Ponto fraco', 'planilha de 40 abas'], ['Mantra', 'a trava existe pra ser respeitada']] },
   trader: { emoji: '🎮', title: 'o trader', traits: [['Superpoder', 'entra no candle certo'], ['Ponto fraco', 'videogame no lounge'], ['Mantra', 'stop é custo, não derrota']] },
-  scientist: { emoji: '🧪', title: 'a cientista', traits: [['Superpoder', 'mil velas em segundos'], ['Ponto fraco', 'amostra pequena tira o sono'], ['Mantra', 'backtest não é promessa'], ['Escola', 'dá aula para dez alunos-estratégia']] },
+  scientist: { emoji: '🧪', title: 'a cientista', traits: [['Superpoder', 'mil velas em segundos'], ['Ponto fraco', 'amostra pequena tira o sono'], ['Mantra', 'backtest não é promessa'], ['Escola', 'dá aula para onze alunos-estratégia']] },
   auditor: { emoji: '🔎', title: 'o auditor', traits: [['Superpoder', 'acha o erro no log'], ['Ponto fraco', 'não confia em print'], ['Mantra', 'local não é reconciliado']] },
   dog: { emoji: '🐶', name: 'Max', title: 'o segurança', color: '#e9c98c', traits: [['Pagamento', 'petiscos'], ['Especialidade', 'guardar mesa travada'], ['Ponto fraco', 'soneca no serviço']] },
 };

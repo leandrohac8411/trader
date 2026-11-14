@@ -119,3 +119,10 @@ As 162 variações foram rodadas de novo (108 de antes + stop no empate em 1,5R)
 - O **stop no empate** ajudou nas versões de 1h e foi a única regra com o intervalo de 95% acima de zero no treino (duas variações). No teste de 2026 ainda não há nada comprovado.
 - Alvo de 2R em 1h aparece de novo entre as mais consistentes (treino e teste parecidos).
 - A escola ganhou a **Vera** (bot atual + stop no empate em 1,5R) para acompanhar no papel.
+
+## Decisão (13/11/2026, noite)
+
+- O bot demo passou ao **perfil v3** (padrão): **só 1h, score ≥ 90, alvo 2R, SuperTrend 4 e stop no empate** quando a posição anda 1,5R a favor (o bot sobe o stop para o preço de entrada na Bybit). `BOT_PROFILE=v2` volta ao anterior; `BOT_PROFILE=custom` aceita também `BOT_BREAKEVEN_R`.
+- As 5 posições abertas no 4h (do v2, alvo 3R) continuam acompanhadas até fechar; o bot só não abre novas no 4h. A regra do empate também vale para elas.
+- A escola passou a ter base fixa (v2), para os alunos não mudarem de sentido quando o bot troca de perfil. A **Lara** é o bot de hoje (v3) no papel; a **Bia** ficou como o v2.
+- Mesmo critério de antes: ~30 trades na demo e validação rodada de novo antes de pensar em dinheiro real.

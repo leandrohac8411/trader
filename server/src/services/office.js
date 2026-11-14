@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { createMarketMonitor } from './market-monitor.js';
 import { computeTraderMood } from './crew.js';
 import { computeLadder, computeGoal, computeAchievements } from './game.js';
-import { createSchool } from './school.js';
+import { createSchool, SCHOOL_BASE } from './school.js';
 import { computeResults, RESULTS_SINCE } from './results.js';
 
 export const TEAM = [
@@ -41,7 +41,8 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
     onEvent:e=>event(e.agentId,e.type,e.message,e.correlationId) });
   // Escola de traders: avaliação em papel; Sofia é a professora. Não envia ordens.
   const school = loadSchoolInputs ? createSchool({ loadInputs: loadSchoolInputs, dataDir,
-    baseParams: bot.strategyParams({ promotion: null }), promoteEnabled: !!bot.CFG.schoolPromote, onChange: publish,
+    // base fixa (perfil v2): os alunos são variações descritas em cima dela e não mudam quando o bot troca de perfil
+    baseParams: SCHOOL_BASE, promoteEnabled: !!bot.CFG.schoolPromote, onChange: publish,
     onEvent: e => { if (!e.quiet) event('scientist', e.type, e.message, randomUUID()); } }) : null;
   function event(agentId, type, message, correlationId) {
     const item = { id: randomUUID(), ts: Date.now(), agentId, type, message, correlationId, source: 'office' };

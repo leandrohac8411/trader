@@ -291,9 +291,9 @@
 .office-app.ui-v2 .v2-scene .office-scene-wrap{background:#F1E8D8}
 .office-app.ui-v2 .v2-table th{white-space:nowrap}
 
-/* Logo do usuário (fundo branco some sobre o creme com multiply) */
+/* Logo do usuário (PNG/WebP com fundo transparente) */
 .office-app.ui-v2 .v2-brand{margin:18px 0 26px;display:block}
-.office-app.ui-v2 .v2-brand img{display:block;width:100%;height:auto;mix-blend-mode:multiply}
+.office-app.ui-v2 .v2-brand img{display:block;width:100%;height:auto}
 @media(max-width:1100px){.office-app.ui-v2 .v2-brand{width:52px;height:46px;overflow:hidden;margin:18px auto 26px}.office-app.ui-v2 .v2-brand img{width:auto;height:46px;max-width:none;object-fit:cover;object-position:left}}
 
 /* Celular: menu embaixo já tem as seções; cabeçalhos dos cartões quebram linha */
@@ -313,3 +313,10 @@
   .office-app.ui-v2 .v2-rows li{grid-template-columns:64px 60px minmax(0,1fr) auto;gap:8px}
   .office-app.ui-v2 .office-main{padding:14px 12px 90px;overflow-x:hidden}
 }
+
+/* Posições: moeda, lado e resultado na 1ª linha; a barra de andamento na 2ª, largura toda */
+.office-app.ui-v2 .v2-rows li.v2-posrow{grid-template-columns:auto 1fr auto;row-gap:6px}
+.office-app.ui-v2 .v2-posrow .v2-dir{justify-self:start}
+.office-app.ui-v2 .v2-posrow .v2-track{grid-column:1 / -1}
+.office-app.ui-v2 .v2-posrow .v2-track .pos-track{gap:5px}
+.office-app.ui-v2 .v2-posrow .pos-track-bar{width:100%}

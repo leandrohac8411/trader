@@ -147,10 +147,10 @@ function SignalsCard({ snapshot, desk }) {
     <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{l}</button>)}</div>}>
     {tab === 'positions' && (positions.length ? <ul className="v2-rows">{positions.map(p => {
       const sym = p.key.split('|')[0], d = live[sym];
-      return <li key={p.key}><span className="v2-pair"><Coin symbol={sym} />{coin(sym)}</span>
+      return <li key={p.key} className="v2-posrow"><span className="v2-pair"><Coin symbol={sym} />{coin(sym)}</span>
         <span className={`v2-dir ${p.side === 'Buy' ? 'up' : 'down'}`}>{p.side === 'Buy' ? '↗ Long' : '↘ Short'}</span>
-        <span className="v2-track">{d ? <PositionTrack p={{ side: p.side, entry: p.entry, markPrice: d.markPrice, stopLoss: p.stop, takeProfit: p.tp }} /> : <small className="v2-muted">aguardando preço</small>}</span>
-        <b className={d?.unrealisedPnl > 0 ? 'up' : d?.unrealisedPnl < 0 ? 'down' : ''}>{d ? usd(d.unrealisedPnl, true) : '—'}</b></li>;
+        <b className={d?.unrealisedPnl > 0 ? 'up' : d?.unrealisedPnl < 0 ? 'down' : ''}>{d ? usd(d.unrealisedPnl, true) : '—'}</b>
+        <span className="v2-track">{d ? <PositionTrack p={{ side: p.side, entry: p.entry, markPrice: d.markPrice, stopLoss: p.stop, takeProfit: p.tp }} /> : <small className="v2-muted">aguardando preço</small>}</span></li>;
     })}</ul> : <p className="v2-empty">Nenhuma posição aberta.</p>)}
     {tab === 'proposals' && (proposals.length ? <ul className="v2-rows">{proposals.slice(0, 6).map(p => <li key={`${p.ts}${p.symbol}`}>
       <span className="v2-pair"><Coin symbol={p.symbol} />{coin(p.symbol)}</span>

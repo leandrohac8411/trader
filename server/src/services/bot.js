@@ -91,6 +91,30 @@ export function closeFromExecutions(execs, open) {
   return { qty: filled, exit, closedPnl: dir * (exit - open.entry) * filled - fees - openFees, closedAt: last, source: "executions" };
 }
 
+/**
+ * Último recurso (a demo às vezes não publica nem o closed-pnl nem a execução do fechamento):
+ * o primeiro toque no stop ou no alvo nas velas públicas entre a abertura e a hora em que a posição sumiu.
+ * Vela que toca os dois conta como stop (conservador). Taxa estimada de 0,055% na entrada e na saída.
+ */
+export const ESTIMATE_AFTER_MS = 30 * 60_000;
+export function estimateCloseFromCandles(candles, open, { until = Infinity, feePct = 0.055 } = {}) {
+  const qty = Number(open?.qty);
+  if (!(qty > 0) || !Number.isFinite(open.stop) || !Number.isFinite(open.tp) || !Array.isArray(candles)) return null;
+  const short = open.side === "Sell";
+  const list = [...candles].sort((a, b) => a.ts - b.ts);
+  const step = list.length > 1 ? list[1].ts - list[0].ts : 60_000;
+  for (const c of list) {
+    if (c.ts + step <= (open.openedAt || 0) || c.ts > until) continue; // só velas que terminam depois da abertura
+    const hitStop = short ? c.high >= open.stop : c.low <= open.stop;
+    const hitTp = short ? c.low <= open.tp : c.high >= open.tp;
+    if (!hitStop && !hitTp) continue;
+    const exit = hitStop ? open.stop : open.tp;
+    const fees = qty * (open.entry + exit) * (feePct / 100);
+    return { qty, exit, closedPnl: (short ? -1 : 1) * (exit - open.entry) * qty - fees, closedAt: c.ts, source: "estimate" };
+  }
+  return null;
+}
+
 /** Fechamento da posição: o registro da Bybit (closed-pnl) ou, se ainda não saiu, as execuções. */
 export async function findClose(demo, symbol, open) {
   const c = matchClose(await demo.getClosedPnl({ symbol, limit: 50 }), open);
@@ -488,6 +512,13 @@ export async function tickOnce() {
           if (!c) {
             const ex = await demo.getExecutions({ symbol: p.symbol, startTime: Math.max(0, (p.open.openedAt || 0) - 5_000), limit: 100 });
             c = closeFromExecutions(ex, p.open);
+            if (!c && Date.now() - p.since > ESTIMATE_AFTER_MS) {
+              // velas de 1 min cobrem ~16 h; janelas maiores usam 5 min
+              const span = p.since - (p.open.openedAt || p.since);
+              const interval = span <= 950 * 60_000 ? "1" : "5";
+              const candles = await getKlines({ symbol: p.symbol, interval, limit: 1000, start: (p.open.openedAt || 0) - 60_000, end: p.since + 60_000 });
+              c = estimateCloseFromCandles(candles, p.open, { until: p.since + 60_000 });
+            }
             // o que a corretora devolveu, para dar para ver por que não casou (em /api/bot/status)
             p.info = `closed-pnl: ${closed.length} (mais recente ${closed[0] ? new Date(closed[0].closedAt).toISOString() : "—"}, qtd ${closed[0]?.qty ?? "—"}) · execuções: ${ex.length} [${ex.map((e) => `${e.side} ${e.qty}@${e.price} fechou ${e.closedSize} ${e.execType || ""} ${new Date(e.time).toISOString().slice(11, 16)}`).join("; ")}] · posição qtd ${p.open.qty ?? "—"} aberta ${p.open.openedAt ? new Date(p.open.openedAt).toISOString() : "—"}`;
             delete p.error;

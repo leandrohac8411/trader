@@ -53,6 +53,8 @@ export async function getKlines({
   limit = 300,
   category = "linear",
   signal,
+  start,
+  end,
 } = {}) {
   const sym = String(symbol).toUpperCase();
   const iv = String(interval);
@@ -60,13 +62,15 @@ export async function getKlines({
   const cat = String(category);
 
   const q = new URLSearchParams({ category: cat, symbol: sym, interval: iv, limit: String(lim) });
+  if (Number.isFinite(start)) q.set("start", String(Math.floor(start)));
+  if (Number.isFinite(end)) q.set("end", String(Math.floor(end)));
   const url = `${BYBIT_BASE}/v5/market/kline?${q}`;
 
   // 1m -> 10s de cache; timeframes maiores -> mais tempo
   const ivMin = iv.toUpperCase() === "D" ? 1440 : iv.toUpperCase() === "W" ? 10080 : parseInt(iv, 10) || 1;
   const ttl = Math.min(5 * 60_000, Math.max(10_000, ivMin * 1000));
 
-  return memo(`kline:${cat}:${sym}:${iv}:${lim}`, ttl, async () => {
+  return memo(`kline:${cat}:${sym}:${iv}:${lim}:${start ?? ""}:${end ?? ""}`, ttl, async () => {
     const json = await fetchJson(url, signal);
     const list = Array.isArray(json?.result?.list) ? json.result.list : [];
     return list

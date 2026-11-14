@@ -353,3 +353,21 @@ test("parseSymbols: aceita a lista ou só a quantidade", async () => {
   assert.deepEqual(parseSymbols(undefined), DEFAULT_SYMBOLS);
   assert.deepEqual(parseSymbols("dez"), DEFAULT_SYMBOLS); // nada válido → padrão
 });
+
+test("estimateCloseFromCandles: primeiro toque no stop ou no alvo depois da abertura", async () => {
+  const { estimateCloseFromCandles, closeTradeLine } = await import("../src/services/bot.js");
+  const open = { side: "Sell", qty: 332.4, entry: 75.51, stop: 80.98204, tp: 69.00592, riskUsd: 1818.91, openedAt: 1_000_000 };
+  const k = (ts, high, low) => ({ ts, open: 0, high, low, close: 0 });
+  const candles = [k(940_000, 90, 60), k(1_000_000, 76, 74), k(1_060_000, 72, 70), k(1_120_000, 70, 68.9), k(1_180_000, 82, 60)];
+  const c = estimateCloseFromCandles(candles, open);
+  assert.equal(c.exit, 69.00592);
+  assert.equal(c.closedAt, 1_120_000);
+  assert.equal(c.source, "estimate");
+  const fees = 332.4 * (75.51 + 69.00592) * 0.00055;
+  assert.ok(Math.abs(c.closedPnl - ((75.51 - 69.00592) * 332.4 - fees)) < 1e-6);
+  assert.equal(closeTradeLine({ symbol: "SOLUSDT", tf: "60", open, c }).reason, "tp");
+  // vela que toca os dois conta como stop
+  assert.equal(estimateCloseFromCandles([k(1_000_000, 81, 68)], open).exit, 80.98204);
+  // nada depois do limite de tempo
+  assert.equal(estimateCloseFromCandles(candles, open, { until: 1_060_000 }), null);
+});

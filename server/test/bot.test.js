@@ -343,3 +343,13 @@ test("closeFromExecutions: a demo devolve closedSize 0 — o lado oposto depois 
   assert.ok(Math.abs(c.exit - 0.9284) < 1e-9);
   assert.ok(Math.abs(c.closedPnl - ((1.0004 - 0.9284) * 35966.3 - 18.3)) < 1e-6); // a abertura foi antes da adoção: sem taxa dela
 });
+
+test("parseSymbols: aceita a lista ou só a quantidade", async () => {
+  const { parseSymbols, DEFAULT_SYMBOLS } = await import("../src/services/bot.js");
+  assert.deepEqual(parseSymbols("10"), DEFAULT_SYMBOLS);
+  assert.deepEqual(parseSymbols("5"), DEFAULT_SYMBOLS.slice(0, 5));
+  assert.deepEqual(parseSymbols(" btcusdt , ethusdt "), ["BTCUSDT", "ETHUSDT"]);
+  assert.deepEqual(parseSymbols(""), DEFAULT_SYMBOLS);
+  assert.deepEqual(parseSymbols(undefined), DEFAULT_SYMBOLS);
+  assert.deepEqual(parseSymbols("dez"), DEFAULT_SYMBOLS); // nada válido → padrão
+});

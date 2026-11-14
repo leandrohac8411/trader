@@ -140,11 +140,20 @@ export function tickTimeframes(symbol, timeframes, keys = {}) {
   return [...new Set([...timeframes, ...open])];
 }
 
+// 14/11/2026: top 10 por valor de mercado (3 anos de v3: ganhou do grupo de 5 em todos os anos; top 15 piorou)
+export const DEFAULT_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "LINKUSDT", "TRXUSDT"];
+
+/** BOT_SYMBOLS aceita a lista ("BTCUSDT,ETHUSDT") ou só a quantidade ("10" = as 10 primeiras da lista padrão). */
+export function parseSymbols(raw) {
+  const v = String(raw ?? "").trim();
+  if (/^[0-9]+$/.test(v)) return DEFAULT_SYMBOLS.slice(0, Math.max(1, Math.min(DEFAULT_SYMBOLS.length, Number(v))));
+  const list = v.split(",").map((s) => s.trim().toUpperCase()).filter((s) => /^[A-Z0-9]{2,20}USDT$/.test(s));
+  return list.length ? list : DEFAULT_SYMBOLS;
+}
+
 export const CFG = {
   enabled: process.env.DEMO_BOT === "1" && demo.demoConfigured(),
-  // 14/11/2026: top 10 por valor de mercado (3 anos de v3: ganhou do grupo de 5 em todos os anos; top 15 piorou)
-  symbols: (process.env.BOT_SYMBOLS || "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,LINKUSDT,TRXUSDT")
-    .split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
+  symbols: parseSymbols(process.env.BOT_SYMBOLS),
   timeframes: (process.env.BOT_TIMEFRAMES || "60,240").split(",").map((s) => s.trim()).filter(Boolean),
   riskPct: Number(process.env.BOT_RISK_PCT || 1),
   // escada de risco 10V/5D (game.js). Opt-in: só ajusta o risco por trade com BOT_LADDER=1.

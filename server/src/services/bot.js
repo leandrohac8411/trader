@@ -469,7 +469,18 @@ export async function tickOnce() {
       const still = [];
       for (const p of s.pendingCloses) {
         let c = null;
-        try { c = await findClose(demo, p.symbol, p.open); } catch { /* tenta na próxima */ }
+        p.tries = (p.tries || 0) + 1;
+        try {
+          const closed = await demo.getClosedPnl({ symbol: p.symbol, limit: 50 });
+          c = matchClose(closed, p.open);
+          if (!c) {
+            const ex = await demo.getExecutions({ symbol: p.symbol, startTime: Math.max(0, (p.open.openedAt || 0) - 5_000), limit: 100 });
+            c = closeFromExecutions(ex, p.open);
+            // o que a corretora devolveu, para dar para ver por que não casou (em /api/bot/status)
+            p.info = `closed-pnl: ${closed.length} (mais recente ${closed[0] ? new Date(closed[0].closedAt).toISOString() : "—"}, qtd ${closed[0]?.qty ?? "—"}) · execuções: ${ex.length} (fechando: ${ex.filter((e) => e.closedSize > 0).map((e) => `${e.side} ${e.closedSize}`).join(", ") || "nenhuma"}) · posição qtd ${p.open.qty ?? "—"} aberta ${p.open.openedAt ? new Date(p.open.openedAt).toISOString() : "—"}`;
+            delete p.error;
+          }
+        } catch (e) { p.error = String(e.message || e).slice(0, 200); }
         if (c) {
           const tradeLine = closeTradeLine({ symbol: p.symbol, tf: p.tf, open: p.open, c });
           appendTrade(tradeLine);
@@ -626,6 +637,7 @@ export async function tickOnce() {
           const minRR = CFG.rr1 ? CFG.rr1 * MIN_LIVE_RR_SHARE : 0;
           if (!entryStillValid({ dir: signal, live: livePrice, stop: a.levels.stop, tp: a.levels.tp1, minRR })) {
             const rr = liveRR({ live: livePrice, stop: a.levels.stop, tp: a.levels.tp1 });
+            appendEvent({ type: "skipped", symbol, tf, dir: signal, reason: Number.isFinite(rr) && rr > 0 ? `entrada atrasada: sobram ${rr.toFixed(2)}R (mínimo ${minRR.toFixed(2)}R)` : "preço já saiu da faixa stop/alvo", price: livePrice, stop: a.levels.stop, tp: a.levels.tp1 });
             log.push(`${key}: sinal ${signal} na vela fechada, mas no preço atual (${livePrice}) ${Number.isFinite(rr) && rr > 0 ? `sobram só ${rr.toFixed(2)}R (mínimo ${minRR.toFixed(2)}R)` : "já saiu da faixa stop/alvo"}`);
             ks.lastSignal = signal;
             continue;
@@ -747,6 +759,7 @@ export async function tickOnce() {
       }
     }
 
+    s.lastTick = { at: Date.now(), log: log.slice(-60) };
     saveState(s);
     return { equity, dayStartEquity: s.dayStartEquity, open: openCount, log };
   } finally {

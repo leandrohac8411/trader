@@ -345,3 +345,8 @@
   .office-app.ui-v2 .v2-account-top>div+div{padding-left:12px}
   .office-app.ui-v2 .v2-account-top b{font-size:clamp(17px,5.4vw,22px)}
 }
+
+/* Propostas: o selo do resultado (ordem aberta, falhou…) vinha com o fundo escuro do visual 1 */
+.office-app.ui-v2 .proposal-head .outcome{background:var(--soft)!important;color:var(--muted)!important;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600}
+.office-app.ui-v2 .proposal-head .o-opened{background:#e3f4ea!important;color:#1f7a4d!important}
+.office-app.ui-v2 .proposal-head .o-failed{background:#fbe4e1!important;color:#b3392b!important}

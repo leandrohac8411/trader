@@ -466,6 +466,9 @@ app.get("/api/bot/status", async (_req, res) => {
         maxNotionalPct: bot.CFG.maxNotionalPct,
         dryRun: bot.CFG.dryRun,
       },
+      // fechamentos esperando o registro da corretora e o log da última rodada (diagnóstico)
+      pendingCloses: (s.pendingCloses || []).map((p) => ({ symbol: p.symbol, tf: p.tf, since: p.since, tries: p.tries || 0, info: p.info || null, error: p.error || null })),
+      lastTick: s.lastTick || null,
     });
   } catch (e) {
     res.status(502).json({ enabled: true, error: e.message || String(e) });

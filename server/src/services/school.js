@@ -35,7 +35,7 @@ export const STUDENTS = [
   { id: "curto", name: "Duda", emoji: "🎯", color: "#ff8fb1", style: "Alvo curto, 1,5R", params: { rr1: 1.5 } },
   { id: "lento", name: "Nina", emoji: "🐢", color: "#c7a0ff", style: "Médias lentas (EMA 30/100)", params: { emaFast: 30, emaSlow: 100 } },
   { id: "largo", name: "Theo", emoji: "🧱", color: "#ffa66b", style: "Stop no swing de 10 velas", params: { lookback: 10 } },
-  { id: "empate", name: "Vera", emoji: "🛡️", color: "#9fd8c4", style: "Igual ao bot, mas sobe o stop para a entrada quando chega a 50% do alvo (1,5R)", params: { breakevenAtR: 1.5 } },
+  { id: "empate", name: "Vera", emoji: "🛡️", color: "#9fd8c4", style: "Perfil v2 (alvo 3R) + stop no empate quando chega a 50% do alvo (1,5R)", params: { breakevenAtR: 1.5 } },
   { id: "atual", name: "Lara", emoji: "🧭", color: "#f2b56b", style: "O bot de hoje (perfil v3): 1h, alvo 2R, stop no empate em 1,5R", params: { rr1: 2, breakevenAtR: 1.5 } },
 ];
 

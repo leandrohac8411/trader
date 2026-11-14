@@ -12,6 +12,7 @@ import { Ficha, GoalsStrip, SchoolBoard, ManagerCard, ProposalsCard } from './Ga
 import DemoDesk from './DemoDesk.jsx';
 import Ticker from './Ticker.jsx';
 import DashboardV2 from './DashboardV2.jsx';
+import Clock from './Clock.jsx';
 import logoV2 from './assets/logo-v2.webp';
 
 // Abas do escritório (endereço = hash, para poder favoritar ou compartilhar).
@@ -147,7 +148,7 @@ export default function Office({onDashboard}) {
       <header className="office-header"><div className="office-wordmark">CRYPTO<span>TRADING CO.</span></div><div className="header-divider"/>
         <div className="office-breadcrumb">Workspace <span>/</span> <strong>{focused?agent.name:current.label}</strong></div>
         {ui==='2'&&<nav className="v2-head-tabs" aria-label="Seções"><span>Workspace</span>{VIEWS.map(v=><button key={v.id} aria-current={view===v.id&&!focused?'page':undefined} className={view===v.id&&!focused?'is-active':''} onClick={()=>{setFocused(null);setView(v.id);}}>{v.label}</button>)}</nav>}
-        <div className="header-right"><div className="ui-switch" role="group" aria-label="Versão do visual">{['1','2'].map(v=><button key={v} aria-pressed={ui===v} onClick={()=>setUi(v)}><span className="ui-word">Visual </span>{v}</button>)}</div><span className="demo-badge">{ui==='2'?<i className={`v2-live ${connected?'on':''}`} title={connected?'Conectado ao servidor':'Reconectando…'}/>:<Icon name="shield" size={14}/>} Bybit Demo</span><button className="classic-button" onClick={onDashboard}>Dashboard clássico <Icon name="arrow" size={16}/></button></div>
+        <div className="header-right"><div className="ui-switch" role="group" aria-label="Versão do visual">{['1','2'].map(v=><button key={v} aria-pressed={ui===v} onClick={()=>setUi(v)}><span className="ui-word">Visual </span>{v}</button>)}</div><span className="demo-badge">{ui==='2'?<i className={`v2-live ${connected?'on':''}`} title={connected?'Conectado ao servidor':'Reconectando…'}/>:<Icon name="shield" size={14}/>} Bybit Demo</span>{ui==='2'&&<Clock/>}<button className="classic-button" onClick={onDashboard}>Dashboard clássico <Icon name="arrow" size={16}/></button></div>
       </header>
       {ui==='2'&&<Ticker monitor={snapshot?.monitor} desk={snapshot?.results?`${snapshot.results.totalPnlUsd>=0?'+':'−'}US$ ${Math.abs(snapshot.results.totalPnlUsd).toLocaleString('pt-BR',{maximumFractionDigits:0})} realizado`:null}/>}
       <main className="office-main">

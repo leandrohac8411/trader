@@ -320,3 +320,17 @@
 .office-app.ui-v2 .v2-posrow .v2-track{grid-column:1 / -1}
 .office-app.ui-v2 .v2-posrow .v2-track .pos-track{gap:5px}
 .office-app.ui-v2 .v2-posrow .pos-track-bar{width:100%}
+
+/* Relógio, faixa animada com 10 moedas e seletor de moeda do gráfico */
+.v2-clock{font:700 15px 'Plus Jakarta Sans',sans-serif;font-variant-numeric:tabular-nums;color:var(--text);padding:7px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);white-space:nowrap}
+.office-app.ui-v2 .ticker{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+.office-app.ui-v2 .ticker-track{width:max-content;animation:v2-ticker 60s linear infinite}
+.office-app.ui-v2 .ticker-copy{display:flex}
+.office-app.ui-v2 .ticker:hover .ticker-track{animation-play-state:paused}
+.office-app.ui-v2.reduce-motion .ticker-track{animation:none}
+@media(prefers-reduced-motion:reduce){.office-app.ui-v2 .ticker-track{animation:none}.office-app.ui-v2 .ticker{overflow-x:auto}}
+.office-app.ui-v2 button.tick{border:0;border-right:1px solid var(--line);background:none;cursor:pointer;height:50px;border-radius:0}
+.office-app.ui-v2 button.tick:hover{background:var(--soft)}
+.office-app.ui-v2 .v2-symbol{font:800 19px 'Plus Jakarta Sans',sans-serif!important;border:0!important;background:transparent!important;padding:0 18px 0 0!important;cursor:pointer;color:var(--text)!important}
+.office-app.ui-v2 .v2-symbol:hover{color:var(--amber)!important}
+@media(max-width:760px){.v2-clock{display:none}}

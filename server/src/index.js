@@ -19,7 +19,7 @@ import {
 } from "./services/cmc.js";
 import { getEthGas } from "./services/eth.js";
 import { getFearGreed } from "./services/fng.js";
-import { getKlines, getTickers } from "./services/bybit.js";
+import { getKlines, getTickers, allLinearTickers } from "./services/bybit.js";
 import { analyzeCandles, higherTF } from "./services/strategy.js";
 import { runBacktest, runGrid } from "./services/backtest.js";
 import { chatLLM, AI_ENABLED, AI_MODEL } from "./services/ai.js";
@@ -189,12 +189,37 @@ app.get("/api/bybit/kline", async (req, res) => {
 // Cotação 24h dos mercados acompanhados (faixa de preços e tabela do visual 2). Só dados públicos.
 app.get("/api/bybit/tickers", async (req, res) => {
   try {
+    // ?top=10: as maiores por valor de mercado (CoinMarketCap), sem stablecoins e só as que têm contrato USDT na Bybit
+    const top = Math.min(20, Number(req.query.top) || 0);
+    if (top) {
+      const ranked = await topBybitSymbols(top);
+      const ticks = await getTickers(ranked.map((r) => r.symbol));
+      const names = Object.fromEntries(ranked.map((r) => [r.symbol, r.name]));
+      return res.json({ data: ticks.map((t) => ({ ...t, name: names[t.symbol] })) });
+    }
     const symbols = String(req.query.symbols || "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT").toUpperCase().split(",").filter((s) => /^[A-Z0-9]{2,20}$/.test(s)).slice(0, 20);
     res.json({ data: await getTickers(symbols) });
   } catch (e) {
     res.status(e.status && e.status < 500 ? e.status : 500).json({ error: e.message || String(e) });
   }
 });
+
+const STABLES = new Set(["USDT", "USDC", "DAI", "FDUSD", "TUSD", "USDE", "USDS", "PYUSD", "USD1", "USDD", "BUSD", "USDP", "RLUSD", "BSC-USD"]);
+let topCache = null;
+/** Top N por valor de mercado (CMC, com CoinGecko de reserva) que existem como contrato USDT na Bybit. Cache de 1 h. */
+async function topBybitSymbols(n) {
+  if (!topCache || Date.now() - topCache.at > 3_600_000) {
+    const fallback = ["BTC", "ETH", "XRP", "BNB", "SOL", "TRX", "DOGE", "ADA", "LINK", "XLM", "BCH", "LTC", "AVAX"].map((s) => ({ s, name: s }));
+    let list = fallback;
+    try {
+      const cmc = await getListingsLatest({ limit: 40, convert: "USD" });
+      if (cmc?.length) list = cmc.map((c) => ({ s: String(c.symbol).toUpperCase(), name: c.name }));
+    } catch { /* usa a lista fixa */ }
+    const linear = new Set((await allLinearTickers()).map((t) => t.symbol));
+    topCache = { at: Date.now(), list: list.filter((c) => !STABLES.has(c.s) && !/USD/.test(c.s) && linear.has(`${c.s}USDT`)).map((c) => ({ symbol: `${c.s}USDT`, name: c.name })) };
+  }
+  return topCache.list.slice(0, n);
+}
 
 // ───────────────────────────── estratégia (consenso) ─────────────────────────────
 async function runStrategy(query, { signal:requestSignal } = {}) {

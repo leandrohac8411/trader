@@ -68,7 +68,7 @@ function MarketCard({ monitor, symbol, onPick }) {
       <thead><tr><th>Par</th><th className="num">Preço</th><th className="num">24h</th><th className="num">Vol. (US$)</th><th className="num">Score</th></tr></thead>
       <tbody>{items.map(it => {
         const ok = Number.isFinite(it.price) && !it.error && !it.stale;
-        const t = tickers?.[it.symbol], px = Number.isFinite(t?.price) ? t.price : ok ? it.price : null, ch = t?.change24hPct;
+        const t = tickers?.bySymbol?.[it.symbol], px = Number.isFinite(t?.price) ? t.price : ok ? it.price : null, ch = t?.change24hPct;
         return <tr key={it.symbol} className={symbol === it.symbol ? 'is-on' : ''} onClick={() => onPick(it.symbol)}>
           <td><span className="v2-pair"><Coin symbol={it.symbol} />{coin(it.symbol)}<small>USDT</small></span></td>
           <td className="num">{price(px)}</td>
@@ -84,7 +84,10 @@ function MarketCard({ monitor, symbol, onPick }) {
 // ── Gráfico (velas claras + EMA 20/50 + volume) ─────────────────────────
 const ema = (vals, n) => { const k = 2 / (n + 1); let e = vals[0]; return vals.map(v => (e = v * k + e * (1 - k))); };
 const TFS = [['15', '15m'], ['60', '1h'], ['240', '4h'], ['D', '1d']];
-function ChartCard({ symbol, connected }) {
+function ChartCard({ symbol, onSymbol, connected }) {
+  const tickers = useTickers();
+  const options = tickers?.list?.length ? tickers.list : [{ symbol }];
+  const name = tickers?.bySymbol?.[symbol]?.name || NAMES[coin(symbol)] || coin(symbol);
   const [tf, setTf] = useState('60'), [candles, setCandles] = useState(null), [err, setErr] = useState('');
   useEffect(() => {
     let alive = true, timer;
@@ -113,7 +116,7 @@ function ChartCard({ symbol, connected }) {
     return { cs, W, H, VH, R, y, step, x, vmax, e20: line(e20), e50: line(e50), last, change: (last - first) / first * 100,
       ticks: [0, 0.25, 0.5, 0.75, 1].map(f => hi - f * span) };
   }, [candles]);
-  return <Card className="v2-chart" title={<span className="v2-pair big"><Coin symbol={symbol} size={30} />{symbol}<small>{NAMES[coin(symbol)] || coin(symbol)} / Tether</small></span>}
+  return <Card className="v2-chart" title={<span className="v2-pair big"><Coin symbol={symbol} size={30} /><select className="v2-symbol" aria-label="Moeda do gráfico" value={symbol} onChange={e => onSymbol(e.target.value)}>{options.some(o => o.symbol === symbol) ? null : <option value={symbol}>{symbol}</option>}{options.map(o => <option key={o.symbol} value={o.symbol}>{o.symbol}</option>)}</select><small>{name} / Tether</small></span>}
     action={<div className="v2-seg" role="group" aria-label="Período">{TFS.map(([v, l]) => <button key={v} aria-pressed={tf === v} onClick={() => setTf(v)}>{l}</button>)}</div>}>
     <div className="v2-chart-price"><b>{view ? price(view.last) : '—'}</b>{view && <em className={view.change >= 0 ? 'up' : 'down'}>{pct(view.change, true)}</em>}<span>no período exibido</span></div>
     {err && <p className="v2-muted">{err}</p>}
@@ -222,6 +225,12 @@ function RiskCard({ snapshot, desk }) {
 export default function DashboardV2({ agents, snapshot, connected, selected, onSelect, reduced, sceneRef, cam, onCamera }) {
   const { desk } = useDesk(connected);
   const [symbol, setSymbol] = useState('BTCUSDT');
+  // a faixa de cotações manda a moeda clicada para o gráfico
+  useEffect(() => {
+    const pick = e => { setSymbol(e.detail); document.querySelector('.v2-chart')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+    window.addEventListener('v2-chart-symbol', pick);
+    return () => window.removeEventListener('v2-chart-symbol', pick);
+  }, []);
   const open = snapshot?.bot?.positions?.length || 0;
   return <div className="v2-dash">
     <Card className="v2-scene" title="Escritório · agentes de trading" sub={`6 estações · ${open} posiç${open === 1 ? 'ão aberta' : 'ões abertas'}`}
@@ -241,7 +250,7 @@ export default function DashboardV2({ agents, snapshot, connected, selected, onS
       <AgentsCard agents={agents} snapshot={snapshot} connected={connected} onSelect={onSelect} />
     </div>
     <MarketCard monitor={snapshot?.monitor} symbol={symbol} onPick={setSymbol} />
-    <ChartCard symbol={symbol} connected={connected} />
+    <ChartCard symbol={symbol} onSymbol={setSymbol} connected={connected} />
     <SignalsCard snapshot={snapshot} desk={desk} />
     <PerformanceCard results={snapshot?.results} />
     <DistributionCard results={snapshot?.results} />

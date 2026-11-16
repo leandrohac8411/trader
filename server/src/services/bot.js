@@ -460,6 +460,26 @@ let timer = null;
 let running = false;
 const leverageSet = new Set();
 
+/**
+ * Uma linha por moeda no status: a nota do 1h, a direção e o que falta para o bot entrar.
+ * Sinal "novo" = o bot entraria agora (respeitadas vagas, Ricardo e preço); "antigo" = já foi tratado.
+ */
+export function scoreLine({ symbol, tf, probability, signal, lean, minProb, open, fresh, paused }) {
+  const tfTxt = tf === "60" ? "1h" : tf === "240" ? "4h" : `${tf}m`;
+  const dir = (d) => (d === "LONG" ? "compra" : "venda");
+  const nota = Math.round(Number(probability) || 0);
+  const base = { symbol, tf, score: nota, signal, lean };
+  if (open) return { ...base, text: `${symbol} ${tfTxt}: posição aberta (${dir(open)}), nota ${nota}` };
+  if (signal === "LONG" || signal === "SHORT") {
+    if (paused) return { ...base, text: `${symbol} ${tfTxt}: sinal de ${dir(signal)} (nota ${nota}), mas o bot está pausado` };
+    return { ...base, text: fresh
+      ? `${symbol} ${tfTxt}: sinal NOVO de ${dir(signal)} (nota ${nota}) — avaliado para entrada`
+      : `${symbol} ${tfTxt}: sinal de ${dir(signal)} (nota ${nota}) já tratado — espera um sinal novo` };
+  }
+  const falta = Math.max(0, minProb - nota);
+  return { ...base, text: `${symbol} ${tfTxt}: nota ${nota}/${minProb}, inclinada para ${dir(lean)} — sem sinal${falta ? ` (faltam ${falta})` : ""}` };
+}
+
 export async function tickOnce() {
   if (!CFG.enabled) return { skipped: "bot desligado" };
   if (running) return { skipped: "tick anterior ainda rodando" };
@@ -541,6 +561,7 @@ export async function tickOnce() {
     }
     // conta posições REAIS na corretora, não só o que está no nosso estado
     let openCount = Math.max(positions.length, Object.values(s.keys).filter((k) => k.open).length);
+    const scores = [];
     let opensThisTick = 0;
 
     for (const symbol of CFG.symbols) {
@@ -663,6 +684,11 @@ export async function tickOnce() {
           }
         }
 
+        if (!manageOnly) {
+          scores.push(scoreLine({ symbol, tf, probability: a.probability, signal, lean: a.lean, minProb: CFG.minProb,
+            open: ks.open ? (ks.open.side === "Buy" ? "LONG" : "SHORT") : null, paused,
+            fresh: !ks.open && isFreshSignal({ signal, lastSignal: ks.lastSignal, lastExitTs: ks.lastExitTs, cd: cooldownMs(tf) }) }));
+        }
         if (manageOnly) continue;
         if (paused) {
           // sinal que nasce na pausa é consumido: não vira entrada atrasada quando a pausa acabar
@@ -809,7 +835,7 @@ export async function tickOnce() {
       }
     }
 
-    s.lastTick = { at: Date.now(), log: log.slice(-60) };
+    s.lastTick = { at: Date.now(), log: log.slice(-60), scores };
     saveState(s);
     return { ...(paused ? { paused } : {}), equity, dayStartEquity: s.dayStartEquity, open: openCount, log };
   } finally {

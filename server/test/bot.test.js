@@ -371,3 +371,14 @@ test("estimateCloseFromCandles: primeiro toque no stop ou no alvo depois da aber
   // nada depois do limite de tempo
   assert.equal(estimateCloseFromCandles(candles, open, { until: 1_060_000 }), null);
 });
+
+test("scoreLine: explica por que a moeda entrou ou não", async () => {
+  const { scoreLine } = await import("../src/services/bot.js");
+  const base = { symbol: "BTCUSDT", tf: "60", minProb: 90, lean: "SHORT" };
+  assert.match(scoreLine({ ...base, probability: 72.4, signal: "NEUTRAL" }).text, /nota 72\/90, inclinada para venda — sem sinal \(faltam 18\)/);
+  assert.match(scoreLine({ ...base, probability: 93, signal: "SHORT", fresh: true }).text, /sinal NOVO de venda \(nota 93\)/);
+  assert.match(scoreLine({ ...base, probability: 93, signal: "SHORT", fresh: false }).text, /já tratado/);
+  assert.match(scoreLine({ ...base, probability: 93, signal: "SHORT", fresh: true, paused: "daily-loss" }).text, /pausado/);
+  assert.match(scoreLine({ ...base, probability: 80, signal: "NEUTRAL", open: "SHORT" }).text, /posição aberta \(venda\)/);
+  assert.equal(scoreLine({ ...base, probability: 72.4, signal: "NEUTRAL" }).score, 72);
+});

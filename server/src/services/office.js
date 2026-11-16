@@ -41,6 +41,8 @@ export function createOffice({ bot, analyze, backtest, chat, aiEnabled, loadScho
     onEvent:e=>event(e.agentId,e.type,e.message,e.correlationId) });
   // Escola de traders: avaliação em papel; Sofia é a professora. Não envia ordens.
   const school = loadSchoolInputs ? createSchool({ loadInputs: loadSchoolInputs, dataDir,
+    // mesmas moedas do bot (BOT_SYMBOLS): o papel dos alunos compara com o que o bot de fato opera
+    ...(bot.CFG?.symbols?.length ? { symbols: bot.CFG.symbols } : {}),
     // base fixa (perfil v2): os alunos são variações descritas em cima dela e não mudam quando o bot troca de perfil
     baseParams: SCHOOL_BASE, promoteEnabled: !!bot.CFG.schoolPromote, onChange: publish,
     onEvent: e => { if (!e.quiet) event('scientist', e.type, e.message, randomUUID()); } }) : null;

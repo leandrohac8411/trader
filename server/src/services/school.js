@@ -224,11 +224,9 @@ export function createSchool({ loadInputs, dataDir, symbols = ["BTCUSDT", "ETHUS
       // velas por período (1h para a maioria; 4h para quem pede)
       const byInterval = {};
       for (const iv of [...new Set(students.map((s) => s.interval || interval))]) {
-        const list = [];
-        for (const symbol of symbols) {
-          try { list.push({ symbol, ...(await loadInputs(symbol, iv)) }); } catch { /* mercado indisponível */ }
-        }
-        byInterval[iv] = list;
+        // em paralelo: com 10 moedas, uma por vez passava de 30 s e o agendador desistia de esperar
+        const loaded = await Promise.all(symbols.map((symbol) => loadInputs(symbol, iv).then((d) => ({ symbol, ...d }), () => null)));
+        byInterval[iv] = loaded.filter(Boolean); // mercado indisponível fica de fora
       }
       const datasets = byInterval[interval] || Object.values(byInterval)[0] || [];
       if (!datasets.length) throw Error("Sem velas para avaliar.");

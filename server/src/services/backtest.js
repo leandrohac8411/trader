@@ -95,6 +95,8 @@ export function runBacktest(candles, opts = {}) {
     // anda de lado (eficiência de 20 dias < X) E está agitado (ATR% acima da mediana dos 180 dias anteriores).
     // Usa as velas do período maior como vierem (na escola elas já chegam alinhadas pelo fechamento).
     skipChop = null,
+    // para a análise de lookahead: devolve a decisão de cada vela (sinal, score, stop, alvo, caos)
+    collectSignals = false,
     meta = {},
   } = opts;
 
@@ -134,6 +136,9 @@ export function runBacktest(candles, opts = {}) {
     }
     evAll[i] = evaluateBar(candles, ind, i, { ...stratOpts, htfBias });
   }
+  const signalLog = collectSignals
+    ? evAll.map((ev, i) => (ev ? { i, signal: ev.signal, probability: ev.probability, stop: ev.levels?.stop ?? null, tp1: ev.levels?.tp1 ?? null, chop: chopAt[i] } : null)).filter(Boolean)
+    : undefined;
 
   // ── passo 2: retorno futuro por sinal (usa o sinal BRUTO do consenso, sem gate,
   //    para que todas as faixas de probabilidade apareçam na calibração) ─────────
@@ -370,6 +375,7 @@ export function runBacktest(candles, opts = {}) {
   }
 
   return {
+    ...(signalLog ? { signalLog } : {}),
     meta: {
       symbol: meta.symbol ?? null,
       interval: meta.interval ?? null,

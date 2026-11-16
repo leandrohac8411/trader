@@ -53,6 +53,19 @@ export function chopSeries(candles, erMax, { erPeriod = 20, atrPeriod = 14, volW
   return out;
 }
 
+const intervalMin = (tf) => (String(tf).toUpperCase() === "D" ? 1440 : String(tf).toUpperCase() === "W" ? 10080 : Number(tf));
+
+/**
+ * Alinha as velas do período maior pelo FECHAMENTO: runBacktest usa a vela maior quando ts <= ts da vela atual,
+ * então, sem isso, uma vela de 1h às 10:00 enxergaria a vela diária de hoje inteira (fechamento do futuro).
+ * Depois do ajuste, a vela diária só aparece na última vela de 1h do dia, que fecha junto com ela.
+ */
+export function alignHtfByClose(htfCandles, interval, htfInterval) {
+  if (!Array.isArray(htfCandles)) return htfCandles ?? null;
+  const shift = (intervalMin(htfInterval) - intervalMin(interval)) * 60_000;
+  return htfCandles.map((c) => ({ ...c, ts: Number(c.ts) + shift }));
+}
+
 export function runBacktest(candles, opts = {}) {
   const {
     htfCandles = null,

@@ -21,7 +21,7 @@ import { getEthGas } from "./services/eth.js";
 import { getFearGreed } from "./services/fng.js";
 import { getKlines, getTickers, allLinearTickers } from "./services/bybit.js";
 import { analyzeCandles, higherTF } from "./services/strategy.js";
-import { runBacktest, runGrid } from "./services/backtest.js";
+import { runBacktest, runGrid, alignHtfByClose } from "./services/backtest.js";
 import { chatLLM, AI_ENABLED, AI_MODEL } from "./services/ai.js";
 import * as bot from "./services/bot.js";
 import { getPositions as demoPositions, getEquity as demoEquity } from "./services/bybit-demo.js";
@@ -297,7 +297,7 @@ async function cached(kind, query, fn) {
 app.get("/api/backtest", async (req, res) => {
   try {
     const data = await cached("bt", req.query, ({ candles, htfCandles, symbol, interval }) =>
-      runBacktest(candles, { htfCandles, meta: { symbol, interval } })
+      runBacktest(candles, { htfCandles: alignHtfByClose(htfCandles?.filter((c) => c.ts + bot.tfMinutes(higherTF(interval)) * 60_000 <= Date.now()), interval, higherTF(interval)), meta: { symbol, interval } })
     );
     res.json({ data });
   } catch (e) {

@@ -15,6 +15,7 @@ import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runBacktest } from "../src/services/backtest.js";
 import { higherTF } from "../src/services/strategy.js";
+import { alignHtfByClose } from "../src/services/backtest.js";
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const OUT = arg("--out", fileURLToPath(new URL("../../docs/validacao-estrategia.md", import.meta.url)));
@@ -64,7 +65,7 @@ export async function collectTrades(costs = {}, params = {}, tfs = TFS) {
   for (const symbol of SYMBOLS) for (const tf of tfs) {
     const c = (await klines(symbol, tf, since - warm * tfMin(tf) * 60_000)).filter((x) => x.ts >= since - warm * tfMin(tf) * 60_000);
     const h = await klines(symbol, higherTF(tf), since - 400 * tfMin(higherTF(tf)) * 60_000);
-    const bt = runBacktest(c, { htfCandles: h, singleTarget: true, warmup: warm, ...params, ...costs });
+    const bt = runBacktest(c, { htfCandles: alignHtfByClose(h, tf, higherTF(tf)), singleTarget: true, warmup: warm, ...params, ...costs });
     for (const t of bt.tradeList) {
       out.push({
         symbol, tf, dir: t.dir, netR: t.netR, reason: t.reason,

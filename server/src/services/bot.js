@@ -11,6 +11,7 @@ import { computeLadder } from "./game.js";
 import { readPromotion } from "./school.js";
 import { reviewProposal, proposalSummary } from "./approval.js";
 import { evaluateTrade, seedFrom } from "./timemachine.js";
+import { alignHtfByClose } from "./backtest.js";
 
 const DATA_DIR = new URL("../../data/", import.meta.url);
 const STATE_FILE = new URL("bot-state.json", DATA_DIR);
@@ -246,7 +247,8 @@ async function runTimeMachine({ symbol, tf, dir, entry, stop, tp, params }) {
       /* período maior opcional */
     }
     const seed = seedFrom(`${symbol}|${tf}|${candles.at(-1)?.ts}`);
-    return evaluateTrade({ candles, htfCandles, dir, entry, stop, tp, params, seed }).verdict;
+    // período maior alinhado pelo fechamento: o histórico não pode ver a vela diária ainda em formação
+    return evaluateTrade({ candles, htfCandles: alignHtfByClose(htfCandles, tf, higherTF(tf)), dir, entry, stop, tp, params, seed }).verdict;
   } catch (e) {
     return { ok: true, available: false, text: `indisponível agora (${String(e.message).slice(0, 60)}), não barra` };
   }

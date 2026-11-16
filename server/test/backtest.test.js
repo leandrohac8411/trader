@@ -212,3 +212,12 @@ test("skipChop: não abre trade quando o período maior está em caos", () => {
   assert.equal(skip.meta.params.filters.skipChop, 0.2);
   assert.equal(runBacktest(cs, opts).meta.params.filters.skipChop, null);
 });
+
+test("alignHtfByClose: vela diária só aparece quando fecha", async () => {
+  const { alignHtfByClose } = await import("../src/services/backtest.js");
+  const day = [{ ts: 0, close: 1 }, { ts: 86_400_000, close: 2 }];
+  const a = alignHtfByClose(day, "60", "D");
+  assert.equal(a[0].ts, 86_400_000 - 3_600_000); // última vela de 1h do dia
+  assert.equal(alignHtfByClose(day, "60", "240")[1].ts, 86_400_000 + 3 * 3_600_000);
+  assert.equal(alignHtfByClose(null, "60", "D"), null);
+});

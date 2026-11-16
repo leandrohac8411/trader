@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { runBacktest, runGrid } from "../src/services/backtest.js";
+import { runBacktest, runGrid, chopSeries } from "../src/services/backtest.js";
 
 function series(fn, n = 400) {
   const out = [];
@@ -182,4 +182,33 @@ test("maxStopPct: não abre trade com stop longe demais (como o Ricardo no bot)"
   assert.ok(all.tradeList.some((t) => pct(t) > 2), "a série precisa ter stops largos");
   assert.ok(capped.tradeList.every((t) => pct(t) <= 2 + 1e-9));
   assert.equal(runBacktest(cs, opts).meta.params.exit.maxStopPct, 15);
+});
+
+test("chopSeries: marca lateral agitado, não tendência nem lateral calmo", () => {
+  const day = (i, c, range) => ({ ts: i * 86_400_000, open: c, high: c + range, low: c - range, close: c });
+  const cs = [];
+  for (let i = 0; i < 230; i++) cs.push(day(i, 100 + i * 0.5, 0.5)); // tendência calma
+  for (let i = 230; i < 260; i++) cs.push(day(i, 215 + (i % 2 ? 4 : -4), 6)); // lateral agitado
+  const chop = chopSeries(cs, 0.2);
+  assert.equal(chop.slice(0, 230).some(Boolean), false, "tendência não é caos");
+  assert.equal(chop[259], true, "lateral com volatilidade alta é caos");
+  assert.equal(chopSeries(cs, 0.01)[259], true);
+  const calm = cs.map((c, i) => (i >= 230 ? day(i, 215 + (i % 2 ? 0.1 : -0.1), 0.2) : c));
+  assert.equal(chopSeries(calm, 0.2)[259], false, "lateral calmo não é caos");
+});
+
+test("skipChop: não abre trade quando o período maior está em caos", () => {
+  const cs = series((i) => 100 + i * 0.5 + 10 * Math.sin(i / 7), 400);
+  const opts = { warmup: 60, minProbEntry: 0, singleTarget: true, rr1: 2 };
+  // período maior todo em caos: alterna forte, sem sair do lugar, com volatilidade crescente
+  const htf = Array.from({ length: 260 }, (_, k) => {
+    const c = 100 + (k % 2 ? 1 : -1) * (1 + k * 0.05);
+    return { ts: cs[0].ts - (260 - k) * 3_600_000 + 400 * 3_600_000, open: c, high: c + 1 + k * 0.05, low: c - 1 - k * 0.05, close: c };
+  });
+  const free = runBacktest(cs, { ...opts, htfCandles: htf });
+  const skip = runBacktest(cs, { ...opts, htfCandles: htf, skipChop: 0.2 });
+  assert.ok(free.tradeList.length > 0);
+  assert.ok(skip.tradeList.length < free.tradeList.length);
+  assert.equal(skip.meta.params.filters.skipChop, 0.2);
+  assert.equal(runBacktest(cs, opts).meta.params.filters.skipChop, null);
 });

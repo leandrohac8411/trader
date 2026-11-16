@@ -171,3 +171,14 @@ test("Beto = Lara + aperta o stop em vela forte contra", async () => {
   assert.equal(seen[0].tightenOnAdverseAtr, 1);
   assert.equal(seen[0].rr1, 2);
 });
+
+test("Davi = Lara + fica de fora no caos lateral", async () => {
+  const { STUDENTS, SCHOOL_BASE, gradeStudent, sanitizeParams } = await import("../src/services/school.js");
+  const davi = STUDENTS.find((s) => s.id === "calmo");
+  assert.deepEqual(davi.params, { rr1: 2, breakevenAtR: 1.5, skipChop: 0.2 });
+  assert.equal(sanitizeParams({ skipChop: 9 }).skipChop, 0.5);
+  const seen = [];
+  gradeStudent(davi, [{ symbol: "X", candles: [{ ts: 1 }] }], { baseParams: SCHOOL_BASE, backtest: (c, o) => { seen.push(o); return { tradeList: [] }; } });
+  assert.equal(seen[0].skipChop, 0.2);
+  assert.equal(seen[0].breakevenAtR, 1.5);
+});

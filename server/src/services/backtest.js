@@ -24,6 +24,35 @@ const BUCKET_EDGES = [50, 55, 60, 65, 70, 75, 80, 85, 90];
  * @param {{symbol?:string,interval?:string}} [opts.meta]
  * @param {number} [opts.rr1] [opts.rr2] [opts.lookback] ... (repassados à estratégia)
  */
+/**
+ * "Caos lateral" em cada vela do período maior: eficiência de 20 velas < erMax E ATR(14)% acima da
+ * mediana das 180 velas anteriores. Só usa a vela k e as anteriores (sem olhar o futuro).
+ * @returns {boolean[]}
+ */
+export function chopSeries(candles, erMax, { erPeriod = 20, atrPeriod = 14, volWindow = 180 } = {}) {
+  const n = candles.length;
+  const c = candles.map((x) => Number(x.close));
+  const atrPct = new Array(n).fill(null);
+  for (let k = atrPeriod; k < n; k++) {
+    let sum = 0;
+    for (let j = k - atrPeriod + 1; j <= k; j++) {
+      const h = Number(candles[j].high), l = Number(candles[j].low), pc = c[j - 1];
+      sum += Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+    }
+    atrPct[k] = sum / atrPeriod / c[k];
+  }
+  const out = new Array(n).fill(false);
+  for (let k = Math.max(erPeriod, atrPeriod + volWindow); k < n; k++) {
+    let path = 0;
+    for (let j = k - erPeriod + 1; j <= k; j++) path += Math.abs(c[j] - c[j - 1]);
+    const er = path > 0 ? Math.abs(c[k] - c[k - erPeriod]) / path : 0;
+    if (er >= erMax) continue;
+    const w = atrPct.slice(k - volWindow, k).filter((v) => v != null).sort((a, b) => a - b);
+    out[k] = w.length > 0 && atrPct[k] > w[w.length >> 1];
+  }
+  return out;
+}
+
 export function runBacktest(candles, opts = {}) {
   const {
     htfCandles = null,
@@ -49,6 +78,10 @@ export function runBacktest(candles, opts = {}) {
     // igual ao Ricardo (approval.js): não entra com stop a mais de X% da entrada. Sem isso, num crash
     // (10/10/2025) o simulador abria vendas com stop a 35% que ficavam meses abertas e travavam a moeda.
     maxStopPct = 15,
+    // "sem caos lateral" (regime do repositório agiprolabs, testado em 16/11/2026): não abre quando o DIÁRIO
+    // anda de lado (eficiência de 20 dias < X) E está agitado (ATR% acima da mediana dos 180 dias anteriores).
+    // Usa as velas do período maior como vierem (na escola elas já chegam alinhadas pelo fechamento).
+    skipChop = null,
     meta = {},
   } = opts;
 
@@ -76,12 +109,15 @@ export function runBacktest(candles, opts = {}) {
 
   // ── passo 1: avalia TODA vela uma vez (usado pelos dois modos) ──────────────
   const evAll = new Array(n).fill(null);
+  const chopHtf = skipChop && htfCandles ? chopSeries(htfCandles, skipChop) : null;
+  const chopAt = new Array(n).fill(false);
   let hPtr = -1;
   for (let i = warmup; i < n; i++) {
     let htfBias = null;
     if (htfTs) {
       while (hPtr + 1 < htfTs.length && htfTs[hPtr + 1] <= Number(candles[i].ts)) hPtr++;
       if (hPtr >= 54) htfBias = htfBiasArr[hPtr];
+      if (chopHtf && hPtr >= 0) chopAt[i] = chopHtf[hPtr];
     }
     evAll[i] = evaluateBar(candles, ind, i, { ...stratOpts, htfBias });
   }
@@ -217,7 +253,8 @@ export function runBacktest(candles, opts = {}) {
       ev &&
       ev.signal !== "NEUTRAL" &&
       ev.levels.stop != null &&
-      (freshSignal || canReenter)
+      (freshSignal || canReenter) &&
+      !chopAt[i]
     ) {
       const dir = ev.signal === "LONG" ? 1 : -1;
       const entry = open[i + 1];
@@ -336,6 +373,7 @@ export function runBacktest(candles, opts = {}) {
         riskPerTradePct,
         warmup,
         exit: { exitOnReverse, breakevenAfterTp1, trailAtr, singleTarget, breakevenAtR, tightenOnAdverseAtr, maxStopPct },
+        filters: { skipChop },
       },
     },
     trades: tradeStats,

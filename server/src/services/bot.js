@@ -486,10 +486,10 @@ export async function tickOnce() {
     if (equity <= s.dayStartEquity * (1 - CFG.dailyLossLimitPct / 100)) {
       s.paused = "daily-loss";
     }
-    if (s.paused) {
-      saveState(s);
-      return { paused: s.paused, equity, log };
-    }
+    // Pausa (perda do dia ou manual) bloqueia só ENTRADAS novas: o bot continua registrando fechamentos,
+    // movendo o stop para o empate e adotando posições. Antes ele parava tudo e o empate não subia.
+    const paused = s.paused || null;
+    if (paused) log.push(`pausado (${paused}): sem entradas novas; posições abertas seguem acompanhadas`);
 
     const stratParams = strategyParams({ promotion: CFG.schoolPromote ? readPromotion(DATA_DIR) : null });
     const positions = await demo.getPositions();
@@ -664,6 +664,11 @@ export async function tickOnce() {
         }
 
         if (manageOnly) continue;
+        if (paused) {
+          // sinal que nasce na pausa é consumido: não vira entrada atrasada quando a pausa acabar
+          ks.lastSignal = signal;
+          continue;
+        }
 
         // sem posição nossa → talvez abrir (no dry-run o teto de "abertas" não se aplica,
         // já que nada fica de fato aberto — assim dá pra ver o bot decidindo ao longo do tempo)
@@ -806,7 +811,7 @@ export async function tickOnce() {
 
     s.lastTick = { at: Date.now(), log: log.slice(-60) };
     saveState(s);
-    return { equity, dayStartEquity: s.dayStartEquity, open: openCount, log };
+    return { ...(paused ? { paused } : {}), equity, dayStartEquity: s.dayStartEquity, open: openCount, log };
   } finally {
     running = false;
   }

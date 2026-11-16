@@ -90,6 +90,25 @@ export async function getKlines({
 
 /** Cotação 24h (preço, variação, volume) dos contratos USDT pedidos, na ordem pedida. Cache de 20 s. */
 let tickCache = null;
+/**
+ * Histórico de funding (público). Cada item: { ts: hora da liquidação, rate: taxa (0.0001 = 0,01%) }, do mais antigo ao mais novo.
+ * 200 liquidações cobrem ~66 dias com funding de 8h, mais que as 1.000 velas de 1h da escola.
+ */
+export async function getFundingHistory({ symbol = "BTCUSDT", limit = 200, category = "linear", endTime, signal } = {}) {
+  const sym = String(symbol).toUpperCase();
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 200, 1), 200);
+  const q = new URLSearchParams({ category: String(category), symbol: sym, limit: String(lim) });
+  if (Number.isFinite(endTime)) q.set("endTime", String(Math.floor(endTime)));
+  return memo(`funding:${category}:${sym}:${lim}:${endTime ?? ""}`, 10 * 60_000, async () => {
+    const json = await fetchJson(`${BYBIT_BASE}/v5/market/funding/history?${q}`, signal);
+    const list = Array.isArray(json?.result?.list) ? json.result.list : [];
+    return list
+      .map((r) => ({ ts: toNum(r?.fundingRateTimestamp), rate: toNum(r?.fundingRate) }))
+      .filter((r) => r.ts > 0 && Number.isFinite(r.rate))
+      .sort((x, y) => x.ts - y.ts);
+  });
+}
+
 export async function allLinearTickers() {
   if (!tickCache || Date.now() - tickCache.at > 20_000) {
     const json = await fetchJson(`${BYBIT_BASE}/v5/market/tickers?category=linear`);

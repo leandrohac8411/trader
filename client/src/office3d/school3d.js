@@ -19,14 +19,16 @@ const STUDENT_LOOKS = {
   atual: { skin: '#f0c29b', hair: '#2a1a12', hairStyle: 'bob', jacket: '#f2b56b' },
   corte: { skin: '#c48a62', hair: '#1e1714', hairStyle: 'short', jacket: '#e88f8f' },
   calmo: { skin: '#a8714c', hair: '#2b2018', hairStyle: 'swept', jacket: '#a8c97f' },
+  funding: { skin: '#f0c8a8', hair: '#7a3b2a', hairStyle: 'long', jacket: '#d9a3e8' },
 };
-// 3 fileiras × 3 carteiras + a Vera no fundo, à direita, a Lara (o bot de hoje) na frente, à direita, e o Beto ao lado dela; o Davi ao lado da Vera.
+// 3 fileiras × 3 carteiras + a Vera no fundo, à direita, a Lara (o bot de hoje) na frente, à direita, e o Beto ao lado dela; o Davi ao lado da Vera e a Íris ao lado do Davi.
 const SEATS = [
   ['base', -2.4, 3.5], ['antigo', 0.3, 3.5], ['alvo', 3.0, 3.5],
   ['quatro', -2.4, 5.3], ['quatro3', 0.3, 5.3], ['rapido', 3.0, 5.3],
   ['curto', -2.4, 7.1], ['lento', 0.3, 7.1], ['largo', 3.0, 7.1],
   ['empate', 3.0, 8.7], ['atual', 3.0, 1.95], ['corte', 0.3, 1.95],
   ['calmo', 0.3, 8.7],
+  ['funding', -2.4, 8.7],
 ];
 const STATUS_COLOR = { aprovado: '#4ade80', aguardando: '#fbbf24', amostra: '#94a3b8', reprovado: '#ef4444', 'reprovado-prova': '#f97316' };
 const YAW = -Math.PI / 2; // students face -X, towards the board

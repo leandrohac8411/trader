@@ -221,3 +221,19 @@ test("alignHtfByClose: vela diária só aparece quando fecha", async () => {
   assert.equal(alignHtfByClose(day, "60", "240")[1].ts, 86_400_000 + 3 * 3_600_000);
   assert.equal(alignHtfByClose(null, "60", "D"), null);
 });
+
+test("fundingCrowd: não vende com a multidão vendida nem compra com a multidão comprada", () => {
+  const cs = series((i) => 100 + 20 * Math.sin(i / 25) + 3 * Math.sin(i / 4), 400);
+  const opts = { warmup: 60, minProbEntry: 0, singleTarget: true, rr1: 2 };
+  const fund = (rate) => Array.from({ length: 60 }, (_, k) => ({ ts: cs[0].ts + k * 8 * 3_600_000, rate }));
+  const free = runBacktest(cs, opts).tradeList;
+  const shortsCrowded = runBacktest(cs, { ...opts, fundingCrowd: 0.0003, funding: fund(-0.001) }).tradeList;
+  const longsCrowded = runBacktest(cs, { ...opts, fundingCrowd: 0.0003, funding: fund(0.002) }).tradeList;
+  const normal = runBacktest(cs, { ...opts, fundingCrowd: 0.0003, funding: fund(0.0001) }).tradeList;
+  assert.ok(free.some((t) => t.dir === "SHORT") && free.some((t) => t.dir === "LONG"));
+  assert.equal(shortsCrowded.some((t) => t.dir === "SHORT"), false);
+  assert.ok(shortsCrowded.some((t) => t.dir === "LONG"));
+  assert.equal(longsCrowded.some((t) => t.dir === "LONG"), false);
+  assert.deepEqual(normal, free, "funding normal não muda nada");
+  assert.deepEqual(runBacktest(cs, { ...opts, fundingCrowd: 0.0003 }).tradeList, free, "sem dados de funding o filtro não age");
+});

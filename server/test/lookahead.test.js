@@ -40,7 +40,16 @@ function dailyFrom(candles) {
 }
 const closedDays = (candles) => dailyFrom(candles).filter((d) => d.bars === 24);
 
-const PARAMS = { warmup: 400, minProbEntry: 60, singleTarget: true, rr1: 2, breakevenAtR: 1.5, tightenOnAdverseAtr: 1, skipChop: 0.2 };
+const PARAMS = { warmup: 400, minProbEntry: 60, singleTarget: true, rr1: 2, breakevenAtR: 1.5, tightenOnAdverseAtr: 1, skipChop: 0.2, fundingCrowd: 0.0001 };
+
+/** Funding a cada 8h que oscila bastante (para o filtro de multidão agir). */
+function makeFunding(candles) {
+  const out = [];
+  for (let ts = 8 * HOUR; ts <= candles.at(-1).ts + HOUR; ts += 8 * HOUR) out.push({ ts, rate: 0.0001 + 0.0006 * Math.sin(ts / (5 * DAY)) });
+  return out;
+}
+/** O funding que o simulador conheceria com as velas vistas: só liquidações até o fechamento da última vela. */
+const fundingSeen = (all, seen) => all.filter((f) => f.ts <= seen.at(-1).ts + HOUR);
 // cortes espalhados (inclusive no meio do dia): a decisão de TODA vela antes do corte tem de ser igual
 const CUTS = Array.from({ length: 160 }, (_, j) => 2600 + j * 23);
 const sig = (t) => JSON.stringify(t);
@@ -51,12 +60,13 @@ const sig = (t) => JSON.stringify(t);
  * @returns {{bars:number, trades:number}} quanto foi comparado
  */
 function compare(candles, htfFor) {
-  const fullRun = runBacktest(candles, { ...PARAMS, collectSignals: true, htfCandles: htfFor(candles) });
+  const funding = makeFunding(candles);
+  const fullRun = runBacktest(candles, { ...PARAMS, collectSignals: true, htfCandles: htfFor(candles), funding });
   const fullBars = new Map(fullRun.signalLog.map((x) => [x.i, sig(x)]));
   let bars = 0, trades = 0;
   for (const k of CUTS) {
     const seen = candles.slice(0, k);
-    const cut = runBacktest(seen, { ...PARAMS, collectSignals: true, htfCandles: htfFor(seen) });
+    const cut = runBacktest(seen, { ...PARAMS, collectSignals: true, htfCandles: htfFor(seen), funding: fundingSeen(funding, seen) });
     for (const x of cut.signalLog) {
       assert.equal(sig(x), fullBars.get(x.i), `vela ${x.i} decidiu diferente com o corte em ${k}: o simulador olhou o futuro`);
       bars++;
@@ -88,4 +98,17 @@ test("lookahead: o filtro de caos lateral sozinho também não espia", () => {
   const log = runBacktest(candles, { ...PARAMS, collectSignals: true, htfCandles: htfFor(candles) }).signalLog;
   assert.ok(log.some((x) => x.chop) && log.some((x) => !x.chop), "a série precisa ter caos lateral e tendência");
   compare(candles, htfFor);
+});
+
+test("lookahead: o filtro de funding usa só liquidações até o fechamento da vela", () => {
+  const candles = makeCandles(6200, 5);
+  const funding = makeFunding(candles);
+  const log = runBacktest(candles, { ...PARAMS, collectSignals: true, funding }).signalLog;
+  assert.ok(log.some((x) => x.funding > 0.0002) && log.some((x) => x.funding < 0), "o funding precisa variar");
+  // se o simulador usasse liquidações do futuro, cortar o funding mudaria o passado
+  compare(candles, (seen) => alignHtfByClose(closedDays(seen), "60", "D"));
+  // e a vela que fecha às 08:00 já enxerga a liquidação das 08:00, mas não a das 16:00
+  const i = log.find((x) => (candles[x.i].ts + HOUR) % (8 * HOUR) === 0 && x.i > 500);
+  const known = funding.filter((f) => f.ts <= candles[i.i].ts + HOUR).slice(-3);
+  assert.equal(i.funding, (known[0].rate + known[1].rate + known[2].rate) / 3);
 });

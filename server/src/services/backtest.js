@@ -95,6 +95,11 @@ export function runBacktest(candles, opts = {}) {
     // anda de lado (eficiência de 20 dias < X) E está agitado (ATR% acima da mediana dos 180 dias anteriores).
     // Usa as velas do período maior como vierem (na escola elas já chegam alinhadas pelo fechamento).
     skipChop = null,
+    // "multidão lotada" (testado em 16/11/2026): não vende quando a média do funding das últimas 3 liquidações
+    // está abaixo de 0,01% − X (vendidos pagando caro) e não compra quando está acima de 0,01% + X.
+    // Precisa de `funding` ([{ts, rate}]); só usa liquidações até o fechamento da vela do sinal.
+    fundingCrowd = null,
+    funding = null,
     // para a análise de lookahead: devolve a decisão de cada vela (sinal, score, stop, alvo, caos)
     collectSignals = false,
     meta = {},
@@ -126,6 +131,23 @@ export function runBacktest(candles, opts = {}) {
   const evAll = new Array(n).fill(null);
   const chopHtf = skipChop && htfCandles ? chopSeries(htfCandles, skipChop) : null;
   const chopAt = new Array(n).fill(false);
+  // média do funding conhecido no fechamento de cada vela (3 últimas liquidações)
+  const fundAvg = new Array(n).fill(null);
+  if (fundingCrowd != null && Array.isArray(funding) && funding.length >= 3 && n > 1) {
+    const step = Number(candles[1].ts) - Number(candles[0].ts);
+    const fs = funding.map((f) => ({ ts: Number(f.ts), rate: Number(f.rate) })).sort((a, b) => a.ts - b.ts);
+    let fp = -1;
+    for (let i = 0; i < n; i++) {
+      const closeTs = Number(candles[i].ts) + step;
+      while (fp + 1 < fs.length && fs[fp + 1].ts <= closeTs) fp++;
+      if (fp >= 2) fundAvg[i] = (fs[fp].rate + fs[fp - 1].rate + fs[fp - 2].rate) / 3;
+    }
+  }
+  const crowded = (i, signal) => {
+    const f = fundAvg[i];
+    if (f == null) return false;
+    return signal === "LONG" ? f > 0.0001 + fundingCrowd : f < 0.0001 - fundingCrowd;
+  };
   let hPtr = -1;
   for (let i = warmup; i < n; i++) {
     let htfBias = null;
@@ -137,7 +159,7 @@ export function runBacktest(candles, opts = {}) {
     evAll[i] = evaluateBar(candles, ind, i, { ...stratOpts, htfBias });
   }
   const signalLog = collectSignals
-    ? evAll.map((ev, i) => (ev ? { i, signal: ev.signal, probability: ev.probability, stop: ev.levels?.stop ?? null, tp1: ev.levels?.tp1 ?? null, chop: chopAt[i] } : null)).filter(Boolean)
+    ? evAll.map((ev, i) => (ev ? { i, signal: ev.signal, probability: ev.probability, stop: ev.levels?.stop ?? null, tp1: ev.levels?.tp1 ?? null, chop: chopAt[i], funding: fundAvg[i] } : null)).filter(Boolean)
     : undefined;
 
   // ── passo 2: retorno futuro por sinal (usa o sinal BRUTO do consenso, sem gate,
@@ -272,7 +294,8 @@ export function runBacktest(candles, opts = {}) {
       ev.signal !== "NEUTRAL" &&
       ev.levels.stop != null &&
       (freshSignal || canReenter) &&
-      !chopAt[i]
+      !chopAt[i] &&
+      !crowded(i, ev.signal)
     ) {
       const dir = ev.signal === "LONG" ? 1 : -1;
       const entry = open[i + 1];
@@ -392,7 +415,7 @@ export function runBacktest(candles, opts = {}) {
         riskPerTradePct,
         warmup,
         exit: { exitOnReverse, breakevenAfterTp1, trailAtr, singleTarget, breakevenAtR, tightenOnAdverseAtr, maxStopPct },
-        filters: { skipChop },
+        filters: { skipChop, fundingCrowd },
       },
     },
     trades: tradeStats,

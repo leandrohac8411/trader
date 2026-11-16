@@ -19,7 +19,7 @@ import {
 } from "./services/cmc.js";
 import { getEthGas } from "./services/eth.js";
 import { getFearGreed } from "./services/fng.js";
-import { getKlines, getTickers, allLinearTickers } from "./services/bybit.js";
+import { getKlines, getTickers, allLinearTickers, getFundingHistory } from "./services/bybit.js";
 import { analyzeCandles, higherTF } from "./services/strategy.js";
 import { runBacktest, runGrid, alignHtfByClose } from "./services/backtest.js";
 import { chatLLM, AI_ENABLED, AI_MODEL } from "./services/ai.js";
@@ -589,8 +589,10 @@ const office = createOffice({
     const inputs = await btInputs({ symbol, interval, limit: '1000', htf: '1' });
     const htfMs = bot.tfMinutes(higherTF(interval)) * 60_000;
     const shift = htfMs - bot.tfMinutes(interval) * 60_000;
+    // Funding (para a Íris): falha de dados não derruba a escola, o filtro só fica sem efeito.
+    const funding = await getFundingHistory({ symbol, limit: 200 }).catch(() => null);
     // Descarta a vela maior ainda em formação.
-    return { candles: inputs.candles, htfCandles: inputs.htfCandles?.slice(0, -1).map(c => ({ ...c, ts: c.ts + shift })) };
+    return { candles: inputs.candles, htfCandles: inputs.htfCandles?.slice(0, -1).map(c => ({ ...c, ts: c.ts + shift })), funding };
   },
   backtest: async ({ symbol, interval }) => {
     const inputs = await btInputs({ symbol, interval, limit: '1000', htf: '1' });

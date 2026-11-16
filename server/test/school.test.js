@@ -182,3 +182,15 @@ test("Davi = Lara + fica de fora no caos lateral", async () => {
   assert.equal(seen[0].skipChop, 0.2);
   assert.equal(seen[0].breakevenAtR, 1.5);
 });
+
+test("Íris = Davi + fora quando o funding mostra a multidão lotada", async () => {
+  const { STUDENTS, SCHOOL_BASE, gradeStudent, sanitizeParams } = await import("../src/services/school.js");
+  const iris = STUDENTS.find((s) => s.id === "funding");
+  assert.deepEqual(iris.params, { rr1: 2, breakevenAtR: 1.5, skipChop: 0.2, fundingCrowd: 0.0003 });
+  assert.equal(sanitizeParams({ fundingCrowd: 1 }).fundingCrowd, 0.002);
+  const seen = [];
+  const funding = [{ ts: 1, rate: 0.0001 }];
+  gradeStudent(iris, [{ symbol: "X", candles: [{ ts: 1 }], funding }], { baseParams: SCHOOL_BASE, backtest: (c, o) => { seen.push(o); return { tradeList: [] }; } });
+  assert.equal(seen[0].fundingCrowd, 0.0003);
+  assert.equal(seen[0].funding, funding);
+});

@@ -237,3 +237,22 @@ test("fundingCrowd: não vende com a multidão vendida nem compra com a multidã
   assert.deepEqual(normal, free, "funding normal não muda nada");
   assert.deepEqual(runBacktest(cs, { ...opts, fundingCrowd: 0.0003 }).tradeList, free, "sem dados de funding o filtro não age");
 });
+
+test("skipLowAdx: não abre com o mercado parado (ADX baixo)", async () => {
+  const { adxSeries } = await import("../src/services/backtest.js");
+  const trend = series((i) => 100 + i * 0.8, 200);
+  const flat = series((i) => 100 + (i % 2 ? 0.5 : -0.5) + 0.3 * Math.sin(i / 5), 200);
+  assert.ok(adxSeries(trend).at(-1) > 40, "tendência limpa tem ADX alto");
+  assert.ok(adxSeries(flat).at(-1) < 20, "lateral tem ADX baixo");
+  const cs = series((i) => 100 + 20 * Math.sin(i / 25) + 3 * Math.sin(i / 4), 400);
+  const opts = { warmup: 60, minProbEntry: 0, singleTarget: true, rr1: 2 };
+  const adx = adxSeries(cs);
+  const free = runBacktest(cs, opts);
+  // limite = mediana do ADX nos sinais que entraram: metade deles fica abaixo
+  const atEntry = free.tradeList.map((t) => adx[t.entryIdx - 1]).sort((x, y) => x - y);
+  const thr = atEntry[atEntry.length >> 1];
+  const skip = runBacktest(cs, { ...opts, skipLowAdx: thr });
+  assert.ok(skip.tradeList.length < free.tradeList.length);
+  for (const t of skip.tradeList) assert.ok(adx[t.entryIdx - 1] >= thr, "toda entrada tem ADX >= limite no sinal");
+  assert.equal(skip.meta.params.filters.skipLowAdx, thr);
+});

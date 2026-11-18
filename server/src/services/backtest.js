@@ -53,6 +53,33 @@ export function chopSeries(candles, erMax, { erPeriod = 20, atrPeriod = 14, volW
   return out;
 }
 
+/**
+ * ADX de Wilder (força da tendência, 0–100) em cada vela. Só usa a vela i e as anteriores.
+ * @returns {(number|null)[]}
+ */
+export function adxSeries(candles, period = 14) {
+  const n = candles.length;
+  const out = new Array(n).fill(null);
+  let tr = 0, pdm = 0, ndm = 0, adx = null;
+  const dxs = [];
+  for (let i = 1; i < n; i++) {
+    const h = Number(candles[i].high), l = Number(candles[i].low), ph = Number(candles[i - 1].high), pl = Number(candles[i - 1].low), pc = Number(candles[i - 1].close);
+    const up = h - ph, dn = pl - l;
+    const t = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+    const p = up > dn && up > 0 ? up : 0, m = dn > up && dn > 0 ? dn : 0;
+    if (i <= period) { tr += t; pdm += p; ndm += m; continue; }
+    tr = tr - tr / period + t; pdm = pdm - pdm / period + p; ndm = ndm - ndm / period + m;
+    const pdi = tr ? (100 * pdm) / tr : 0, ndi = tr ? (100 * ndm) / tr : 0;
+    const dx = pdi + ndi ? (100 * Math.abs(pdi - ndi)) / (pdi + ndi) : 0;
+    if (adx == null) {
+      dxs.push(dx);
+      if (dxs.length === period) adx = dxs.reduce((a, b) => a + b, 0) / period;
+    } else adx = (adx * (period - 1) + dx) / period;
+    out[i] = adx;
+  }
+  return out;
+}
+
 const intervalMin = (tf) => (String(tf).toUpperCase() === "D" ? 1440 : String(tf).toUpperCase() === "W" ? 10080 : Number(tf));
 
 /**
@@ -100,6 +127,8 @@ export function runBacktest(candles, opts = {}) {
     // Precisa de `funding` ([{ts, rate}]); só usa liquidações até o fechamento da vela do sinal.
     fundingCrowd = null,
     funding = null,
+    // "mercado parado" (testado em 18/11/2026): não abre quando o ADX(14) do próprio período está abaixo de X.
+    skipLowAdx = null,
     // para a análise de lookahead: devolve a decisão de cada vela (sinal, score, stop, alvo, caos)
     collectSignals = false,
     meta = {},
@@ -143,6 +172,8 @@ export function runBacktest(candles, opts = {}) {
       if (fp >= 2) fundAvg[i] = (fs[fp].rate + fs[fp - 1].rate + fs[fp - 2].rate) / 3;
     }
   }
+  const adxArr = skipLowAdx ? adxSeries(candles) : null;
+  const flat = (i) => !!adxArr && adxArr[i] != null && adxArr[i] < skipLowAdx;
   const crowded = (i, signal) => {
     const f = fundAvg[i];
     if (f == null) return false;
@@ -159,7 +190,7 @@ export function runBacktest(candles, opts = {}) {
     evAll[i] = evaluateBar(candles, ind, i, { ...stratOpts, htfBias });
   }
   const signalLog = collectSignals
-    ? evAll.map((ev, i) => (ev ? { i, signal: ev.signal, probability: ev.probability, stop: ev.levels?.stop ?? null, tp1: ev.levels?.tp1 ?? null, chop: chopAt[i], funding: fundAvg[i] } : null)).filter(Boolean)
+    ? evAll.map((ev, i) => (ev ? { i, signal: ev.signal, probability: ev.probability, stop: ev.levels?.stop ?? null, tp1: ev.levels?.tp1 ?? null, chop: chopAt[i], funding: fundAvg[i], adx: adxArr ? adxArr[i] : null } : null)).filter(Boolean)
     : undefined;
 
   // ── passo 2: retorno futuro por sinal (usa o sinal BRUTO do consenso, sem gate,
@@ -295,7 +326,8 @@ export function runBacktest(candles, opts = {}) {
       ev.levels.stop != null &&
       (freshSignal || canReenter) &&
       !chopAt[i] &&
-      !crowded(i, ev.signal)
+      !crowded(i, ev.signal) &&
+      !flat(i)
     ) {
       const dir = ev.signal === "LONG" ? 1 : -1;
       const entry = open[i + 1];
@@ -415,7 +447,7 @@ export function runBacktest(candles, opts = {}) {
         riskPerTradePct,
         warmup,
         exit: { exitOnReverse, breakevenAfterTp1, trailAtr, singleTarget, breakevenAtR, tightenOnAdverseAtr, maxStopPct },
-        filters: { skipChop, fundingCrowd },
+        filters: { skipChop, fundingCrowd, skipLowAdx },
       },
     },
     trades: tradeStats,

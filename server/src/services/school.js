@@ -22,6 +22,7 @@ export const PARAM_BOUNDS = {
   tightenOnAdverseAtr: [0.5, 3],
   skipChop: [0.05, 0.5],
   fundingCrowd: [0, 0.002],
+  skipLowAdx: [5, 40],
 };
 
 // Base fixa da escola: perfil v2 (score ≥ 90, alvo 3R, SuperTrend 4). Os parâmetros de cada aluno se somam a ela,
@@ -43,6 +44,7 @@ export const STUDENTS = [
   { id: "corte", name: "Beto", emoji: "✂️", color: "#e88f8f", style: "Como no manual: igual à Lara, mas quando vem uma vela forte contra (≥ 1 ATR) aproxima o stop e perde menos", params: { rr1: 2, breakevenAtR: 1.5, tightenOnAdverseAtr: 1 } },
   { id: "calmo", name: "Davi", emoji: "🧘", color: "#a8c97f", style: "Igual à Lara, mas fica de fora no caos lateral: diário andando de lado (eficiência de 20 dias < 0,2) e agitado (volatilidade acima da mediana de 180 dias)", params: { rr1: 2, breakevenAtR: 1.5, skipChop: 0.2 } },
   { id: "funding", name: "Íris", emoji: "🌡️", color: "#d9a3e8", style: "Igual ao Davi, e também não entra quando a multidão já está lotada do mesmo lado: não vende com funding abaixo de −0,02% nem compra acima de +0,04% (média de 24h)", params: { rr1: 2, breakevenAtR: 1.5, skipChop: 0.2, fundingCrowd: 0.0003 } },
+  { id: "parado", name: "Leo", emoji: "📏", color: "#7fb8d9", style: "Igual à Lara, mas não entra com o mercado parado: ADX do 1h abaixo de 15 (ideia do Leandro: \"lateral ninguém entra\")", params: { rr1: 2, breakevenAtR: 1.5, skipLowAdx: 15 } },
 ];
 
 // Troca de turma (13/11/2026: bot passou ao perfil v2). Mudar a turma zera o papel:

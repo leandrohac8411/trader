@@ -194,3 +194,13 @@ test("Íris = Davi + fora quando o funding mostra a multidão lotada", async () 
   assert.equal(seen[0].fundingCrowd, 0.0003);
   assert.equal(seen[0].funding, funding);
 });
+
+test("Leo = Lara + não entra com o mercado parado (ADX 1h < 15)", async () => {
+  const { STUDENTS, SCHOOL_BASE, gradeStudent, sanitizeParams } = await import("../src/services/school.js");
+  const leo = STUDENTS.find((s) => s.id === "parado");
+  assert.deepEqual(leo.params, { rr1: 2, breakevenAtR: 1.5, skipLowAdx: 15 });
+  assert.equal(sanitizeParams({ skipLowAdx: 99 }).skipLowAdx, 40);
+  const seen = [];
+  gradeStudent(leo, [{ symbol: "X", candles: [{ ts: 1 }] }], { baseParams: SCHOOL_BASE, backtest: (c, o) => { seen.push(o); return { tradeList: [] }; } });
+  assert.equal(seen[0].skipLowAdx, 15);
+});

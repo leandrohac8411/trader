@@ -40,7 +40,7 @@ function dailyFrom(candles) {
 }
 const closedDays = (candles) => dailyFrom(candles).filter((d) => d.bars === 24);
 
-const PARAMS = { warmup: 400, minProbEntry: 60, singleTarget: true, rr1: 2, breakevenAtR: 1.5, tightenOnAdverseAtr: 1, skipChop: 0.2, fundingCrowd: 0.0001 };
+const PARAMS = { warmup: 400, minProbEntry: 60, singleTarget: true, rr1: 2, breakevenAtR: 1.5, tightenOnAdverseAtr: 1, skipChop: 0.2, fundingCrowd: 0.0001, skipLowAdx: 20 };
 
 /** Funding a cada 8h que oscila bastante (para o filtro de multidão agir). */
 function makeFunding(candles) {

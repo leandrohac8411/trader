@@ -8,6 +8,10 @@ export const MOODS = {
   confiante: 'Confiante',
 };
 
+// Pausa no lounge por humor (derrotas seguidas / perda perto do limite) dura até 3 h depois da última derrota:
+// o trader esfria a cabeça e volta à mesa. Uma derrota nova recomeça a pausa. Trava do bot não tem prazo.
+export const LOUNGE_MS = 3 * 3_600_000;
+
 const utcDay = ts => new Date(ts).toISOString().slice(0, 10);
 const round = (v, p = 2) => Number(Number(v).toFixed(p));
 
@@ -32,12 +36,18 @@ export function computeTraderMood({ trades = [], now = Date.now(), dayStartEquit
   const wins = today.filter(t => Number(t.pnlUsd) > 0).length;
 
   const base = { streak, todayPnlUsd, todayPct, lossUsage, today: { wins, losses: today.length - wins } };
-  const result = (mood, reason) => ({
-    ...base, mood, label: MOODS[mood], reason,
-    // Pausa no lounge: trava de perda acionada, bot pausado ou humor em perigo.
-    cooldown: mood === 'perigo' || Boolean(paused),
-    cooldownReason: paused === 'daily-loss' ? 'Trava de perda diária acionada' : paused ? 'Bot pausado' : mood === 'perigo' ? reason : null,
-  });
+  const last = closed.at(-1);
+  const lastLossAt = last && Number(last.pnlUsd) <= 0 ? Number(last.closedAt) : null;
+  const result = (mood, reason) => {
+    // Pausa no lounge: trava de perda acionada ou bot pausado (sem prazo), ou humor em perigo (até 3 h após a última derrota).
+    const moodPause = mood === 'perigo' && !paused && lastLossAt != null && now - lastLossAt < LOUNGE_MS;
+    const cooldown = Boolean(paused) || moodPause;
+    return {
+      ...base, mood, label: MOODS[mood], reason, cooldown,
+      cooldownReason: !cooldown ? null : paused === 'daily-loss' ? 'Trava de perda diária acionada' : paused ? 'Bot pausado' : reason,
+      cooldownUntil: moodPause ? lastLossAt + LOUNGE_MS : null,
+    };
+  };
 
   if (paused === 'daily-loss') return result('perigo', 'Trava de perda diária acionada');
   if (lossUsage >= 0.75) return result('perigo', `Perda do dia em ${Math.round(lossUsage * 100)}% do limite`);

@@ -55,3 +55,19 @@ test('malformed records are ignored', () => {
   const m = computeTraderMood({ now: NOW, trades: [{ pnlUsd: 'x', closedAt: NOW }, { pnlUsd: 5 }, t(5)] });
   assert.equal(m.streak, 1);
 });
+
+test('lounge pause from a losing streak ends 3 h after the last loss; a new loss restarts it', () => {
+  const streak = [t(-1, NOW - 6 * 3_600_000), t(-2, NOW - 5 * 3_600_000)];
+  const fresh = computeTraderMood({ now: NOW, trades: [...streak, t(-3, NOW - 3_600_000)] });
+  assert.equal(fresh.cooldown, true);
+  assert.equal(fresh.cooldownUntil, NOW - 3_600_000 + 3 * 3_600_000);
+  const later = computeTraderMood({ now: NOW, trades: [...streak, t(-3, NOW - 4 * 3_600_000)] });
+  assert.equal(later.mood, 'perigo', 'o humor continua em perigo');
+  assert.equal(later.cooldown, false, 'mas o trader já voltou do lounge');
+  assert.equal(later.cooldownReason, null);
+  const again = computeTraderMood({ now: NOW, trades: [...streak, t(-3, NOW - 4 * 3_600_000), t(-4, NOW - 600_000)] });
+  assert.equal(again.cooldown, true, 'derrota nova: volta ao lounge');
+  const locked = computeTraderMood({ now: NOW, paused: 'daily-loss', trades: [...streak, t(-3, NOW - 4.5 * 3_600_000)] });
+  assert.equal(locked.cooldown, true, 'trava de perda diária não tem prazo');
+  assert.equal(locked.cooldownUntil, null);
+});

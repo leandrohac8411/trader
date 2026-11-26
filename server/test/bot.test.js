@@ -392,3 +392,13 @@ test("sameDirBlocked: no máximo 2 entradas novas por hora na mesma direção", 
   assert.equal(sameDirBlocked({ recent, dir: "SHORT", now: now + 31 * 60_000, max: 2 }), false, "depois de 1 h da mais antiga, libera");
   assert.equal(sameDirBlocked({ recent, dir: "SHORT", now, max: 0 }), false, "0 desliga a regra");
 });
+
+test("scoreLine mostra o ADX e avisa quando o mercado está parado", async () => {
+  const { scoreLine, CFG } = await import("../src/services/bot.js");
+  const base = { symbol: "ADAUSDT", tf: "60", minProb: 90, lean: "SHORT", minAdx: 15 };
+  assert.match(scoreLine({ ...base, probability: 92, signal: "SHORT", fresh: true, adx: 11.6 }).text, /mercado está parado \(ADX 12 < 15\) — não entra/);
+  assert.match(scoreLine({ ...base, probability: 92, signal: "SHORT", fresh: true, adx: 30 }).text, /sinal NOVO de venda/);
+  assert.match(scoreLine({ ...base, probability: 70, signal: "NEUTRAL", adx: 9 }).text, /ADX 9 \(parado\)/);
+  assert.equal(scoreLine({ ...base, probability: 70, signal: "NEUTRAL", adx: 22.4 }).adx, 22);
+  assert.equal(CFG.minAdx, 15);
+});

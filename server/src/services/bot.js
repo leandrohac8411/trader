@@ -11,7 +11,7 @@ import { computeLadder } from "./game.js";
 import { readPromotion } from "./school.js";
 import { reviewProposal, proposalSummary } from "./approval.js";
 import { evaluateTrade, seedFrom } from "./timemachine.js";
-import { alignHtfByClose } from "./backtest.js";
+import { alignHtfByClose, adxSeries } from "./backtest.js";
 
 const DATA_DIR = new URL("../../data/", import.meta.url);
 const STATE_FILE = new URL("bot-state.json", DATA_DIR);
@@ -199,6 +199,9 @@ export const CFG = {
   // Várias moedas dando sinal juntas são uma aposta só; em 22 e 23/11 seis vendas e cinco compras abertas
   // na mesma hora bateram o stop juntas. 3 anos: +158% contra +107%, pior dia −7% contra −11%. 0 desliga.
   maxSameDirPerHour: Number(process.env.BOT_MAX_SAME_DIR_PER_HOUR ?? 2),
+  // Mercado parado (testado em 26/11/2026): não entra com ADX(14) do 1h abaixo de X. Com a regra acima,
+  // 3 anos: +184% contra +158%, queda 31% contra 36%. Cortes maiores (20, 25) tiram tendências no começo. 0 desliga.
+  minAdx: Number(process.env.BOT_MIN_ADX ?? 15),
   // teto DURO do tamanho da posição, como fração da equity (evita posição gigante
   // quando o stop é apertado). Se o teto morde, o risco em $ fica menor que riskPct.
   maxNotionalPct: Number(process.env.BOT_MAX_NOTIONAL_PCT || 0.2),
@@ -476,20 +479,23 @@ export function sameDirBlocked({ recent = [], dir, now = Date.now(), max = 2, wi
   return recent.filter((r) => r.dir === dir && now - r.ts < windowMs).length >= max;
 }
 
-export function scoreLine({ symbol, tf, probability, signal, lean, minProb, open, fresh, paused }) {
+export function scoreLine({ symbol, tf, probability, signal, lean, minProb, open, fresh, paused, adx = null, minAdx = 0 }) {
   const tfTxt = tf === "60" ? "1h" : tf === "240" ? "4h" : `${tf}m`;
   const dir = (d) => (d === "LONG" ? "compra" : "venda");
   const nota = Math.round(Number(probability) || 0);
-  const base = { symbol, tf, score: nota, signal, lean };
+  const adxN = Number.isFinite(adx) ? Math.round(adx) : null;
+  const base = { symbol, tf, score: nota, signal, lean, ...(adxN != null ? { adx: adxN } : {}) };
+  const flat = adxN != null && minAdx > 0 && adx < minAdx;
   if (open) return { ...base, text: `${symbol} ${tfTxt}: posição aberta (${dir(open)}), nota ${nota}` };
   if (signal === "LONG" || signal === "SHORT") {
     if (paused) return { ...base, text: `${symbol} ${tfTxt}: sinal de ${dir(signal)} (nota ${nota}), mas o bot está pausado` };
+    if (flat && fresh) return { ...base, text: `${symbol} ${tfTxt}: sinal de ${dir(signal)} (nota ${nota}), mas o mercado está parado (ADX ${adxN} < ${minAdx}) — não entra` };
     return { ...base, text: fresh
       ? `${symbol} ${tfTxt}: sinal NOVO de ${dir(signal)} (nota ${nota}) — avaliado para entrada`
       : `${symbol} ${tfTxt}: sinal de ${dir(signal)} (nota ${nota}) já tratado — espera um sinal novo` };
   }
   const falta = Math.max(0, minProb - nota);
-  return { ...base, text: `${symbol} ${tfTxt}: nota ${nota}/${minProb}, inclinada para ${dir(lean)} — sem sinal${falta ? ` (faltam ${falta})` : ""}` };
+  return { ...base, text: `${symbol} ${tfTxt}: nota ${nota}/${minProb}, inclinada para ${dir(lean)} — sem sinal${falta ? ` (faltam ${falta})` : ""}${adxN != null ? ` · ADX ${adxN}${flat ? " (parado)" : ""}` : ""}` };
 }
 
 export async function tickOnce() {
@@ -696,8 +702,9 @@ export async function tickOnce() {
           }
         }
 
+        const adxNow = CFG.minAdx > 0 ? adxSeries(candles).at(-1) : null;
         if (!manageOnly) {
-          scores.push(scoreLine({ symbol, tf, probability: a.probability, signal, lean: a.lean, minProb: CFG.minProb,
+          scores.push(scoreLine({ symbol, tf, probability: a.probability, signal, lean: a.lean, minProb: CFG.minProb, adx: adxNow, minAdx: CFG.minAdx,
             open: ks.open ? (ks.open.side === "Buy" ? "LONG" : "SHORT") : null, paused,
             fresh: !ks.open && isFreshSignal({ signal, lastSignal: ks.lastSignal, lastExitTs: ks.lastExitTs, cd: cooldownMs(tf) }) }));
         }
@@ -728,6 +735,12 @@ export async function tickOnce() {
             appendEvent({ type: "skipped", symbol, tf, dir: signal, reason: Number.isFinite(rr) && rr > 0 ? `entrada atrasada: sobram ${rr.toFixed(2)}R (mínimo ${minRR.toFixed(2)}R)` : "preço já saiu da faixa stop/alvo", price: livePrice, stop: a.levels.stop, tp: a.levels.tp1 });
             log.push(`${key}: sinal ${signal} na vela fechada, mas no preço atual (${livePrice}) ${Number.isFinite(rr) && rr > 0 ? `sobram só ${rr.toFixed(2)}R (mínimo ${minRR.toFixed(2)}R)` : "já saiu da faixa stop/alvo"}`);
             ks.lastSignal = signal;
+            continue;
+          }
+          if (CFG.minAdx > 0 && Number.isFinite(adxNow) && adxNow < CFG.minAdx) {
+            appendEvent({ type: "skipped", symbol, tf, dir: signal, reason: `mercado parado: ADX ${adxNow.toFixed(0)} abaixo de ${CFG.minAdx}`, price: livePrice, stop: a.levels.stop, tp: a.levels.tp1 });
+            log.push(`${key}: sinal ${signal} pulado — mercado parado (ADX ${adxNow.toFixed(1)})`);
+            ks.lastSignal = signal; // como no teste: sinal em mercado parado não vira entrada depois
             continue;
           }
           s.recentOpens = (s.recentOpens || []).filter((r) => Date.now() - r.ts < SAME_DIR_WINDOW_MS);

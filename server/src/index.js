@@ -462,7 +462,7 @@ app.get("/api/bot/status", async (_req, res) => {
         riskPct: bot.CFG.riskPct,
         minProb: bot.CFG.minProb, profile: bot.CFG.profile, rr1: bot.CFG.rr1, stMult: bot.CFG.stMult,
         dailyLossLimitPct: bot.CFG.dailyLossLimitPct,
-        maxOpen: bot.CFG.maxOpen,
+        maxOpen: bot.CFG.maxOpen, maxSameDirPerHour: bot.CFG.maxSameDirPerHour,
         maxNotionalPct: bot.CFG.maxNotionalPct,
         dryRun: bot.CFG.dryRun,
       },

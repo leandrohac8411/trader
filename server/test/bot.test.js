@@ -382,3 +382,13 @@ test("scoreLine: explica por que a moeda entrou ou não", async () => {
   assert.match(scoreLine({ ...base, probability: 80, signal: "NEUTRAL", open: "SHORT" }).text, /posição aberta \(venda\)/);
   assert.equal(scoreLine({ ...base, probability: 72.4, signal: "NEUTRAL" }).score, 72);
 });
+
+test("sameDirBlocked: no máximo 2 entradas novas por hora na mesma direção", async () => {
+  const { sameDirBlocked } = await import("../src/services/bot.js");
+  const now = 10_000_000;
+  const recent = [{ ts: now - 10 * 60_000, dir: "SHORT" }, { ts: now - 30 * 60_000, dir: "SHORT" }, { ts: now - 5 * 60_000, dir: "LONG" }];
+  assert.equal(sameDirBlocked({ recent, dir: "SHORT", now, max: 2 }), true, "terceira venda na hora é barrada");
+  assert.equal(sameDirBlocked({ recent, dir: "LONG", now, max: 2 }), false, "compra ainda pode");
+  assert.equal(sameDirBlocked({ recent, dir: "SHORT", now: now + 31 * 60_000, max: 2 }), false, "depois de 1 h da mais antiga, libera");
+  assert.equal(sameDirBlocked({ recent, dir: "SHORT", now, max: 0 }), false, "0 desliga a regra");
+});

@@ -195,6 +195,10 @@ export const CFG = {
   dailyLossLimitPct: Number(process.env.BOT_DAILY_LOSS_LIMIT_PCT || 4),
   maxOpen: Number(process.env.BOT_MAX_OPEN || 3),
   maxOpensPerTick: Number(process.env.BOT_MAX_OPENS_PER_TICK || 1),
+  // Entradas em bloco (testado em 26/11/2026): no máximo N entradas NOVAS na mesma direção por hora.
+  // Várias moedas dando sinal juntas são uma aposta só; em 22 e 23/11 seis vendas e cinco compras abertas
+  // na mesma hora bateram o stop juntas. 3 anos: +158% contra +107%, pior dia −7% contra −11%. 0 desliga.
+  maxSameDirPerHour: Number(process.env.BOT_MAX_SAME_DIR_PER_HOUR ?? 2),
   // teto DURO do tamanho da posição, como fração da equity (evita posição gigante
   // quando o stop é apertado). Se o teto morde, o risco em $ fica menor que riskPct.
   maxNotionalPct: Number(process.env.BOT_MAX_NOTIONAL_PCT || 0.2),
@@ -464,6 +468,14 @@ const leverageSet = new Set();
  * Uma linha por moeda no status: a nota do 1h, a direção e o que falta para o bot entrar.
  * Sinal "novo" = o bot entraria agora (respeitadas vagas, Ricardo e preço); "antigo" = já foi tratado.
  */
+const SAME_DIR_WINDOW_MS = 3_600_000;
+
+/** Entradas recentes na mesma direção já atingiram o limite da janela de 1 h? */
+export function sameDirBlocked({ recent = [], dir, now = Date.now(), max = 2, windowMs = SAME_DIR_WINDOW_MS }) {
+  if (!(max > 0)) return false;
+  return recent.filter((r) => r.dir === dir && now - r.ts < windowMs).length >= max;
+}
+
 export function scoreLine({ symbol, tf, probability, signal, lean, minProb, open, fresh, paused }) {
   const tfTxt = tf === "60" ? "1h" : tf === "240" ? "4h" : `${tf}m`;
   const dir = (d) => (d === "LONG" ? "compra" : "venda");
@@ -718,6 +730,14 @@ export async function tickOnce() {
             ks.lastSignal = signal;
             continue;
           }
+          s.recentOpens = (s.recentOpens || []).filter((r) => Date.now() - r.ts < SAME_DIR_WINDOW_MS);
+          if (sameDirBlocked({ recent: s.recentOpens, dir: signal, max: CFG.maxSameDirPerHour })) {
+            const nDir = s.recentOpens.filter((r) => r.dir === signal).length;
+            appendEvent({ type: "skipped", symbol, tf, dir: signal, reason: `já entrou em ${nDir} ${signal === "LONG" ? "compras" : "vendas"} na última hora (máximo ${CFG.maxSameDirPerHour}): mercado se mexendo junto`, price: livePrice, stop: a.levels.stop, tp: a.levels.tp1 });
+            log.push(`${key}: sinal ${signal} pulado — ${nDir} entradas na mesma direção na última hora`);
+            ks.lastSignal = signal; // como no teste: o sinal pulado não volta depois como entrada atrasada
+            continue;
+          }
           a = { ...a, price: livePrice }; // tamanho e registro pelo preço real de entrada
           try {
             const instr = await demo.getInstrument(symbol);
@@ -766,6 +786,7 @@ export async function tickOnce() {
               ks.lastBlockReason = null;
               ks.lastExitTs = Date.now();
               opensThisTick++;
+              s.recentOpens.push({ ts: Date.now(), dir: signal });
               appendEvent({
                 type: "would_open",
                 symbol,
@@ -810,6 +831,7 @@ export async function tickOnce() {
               };
               opensThisTick++;
               openCount++;
+              s.recentOpens.push({ ts: Date.now(), dir: signal });
               appendEvent({
                 type: "opened",
                 symbol,

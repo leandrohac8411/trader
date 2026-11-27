@@ -257,7 +257,8 @@ async function runTimeMachine({ symbol, tf, dir, entry, stop, tp, params }) {
     // período maior alinhado pelo fechamento: o histórico não pode ver a vela diária ainda em formação
     return evaluateTrade({ candles, htfCandles: alignHtfByClose(htfCandles, tf, higherTF(tf)), dir, entry, stop, tp, params, seed }).verdict;
   } catch (e) {
-    return { ok: true, available: false, text: `indisponível agora (${String(e.message).slice(0, 60)}), não barra` };
+    // Sem a Máquina do Tempo o Ricardo não confere tudo: espera a próxima rodada (2 min) em vez de entrar sem ela.
+    return { ok: false, available: false, text: `indisponível agora (${String(e.message).slice(0, 60)}); tenta de novo na próxima rodada` };
   }
 }
 
@@ -781,6 +782,7 @@ export async function tickOnce() {
                 ks.tm = { candleTs, verdict: await runTimeMachine({ symbol, tf, dir: signal, entry: a.price, stop: a.levels.stop, tp: a.levels.tp1, params: stratParams }) };
               }
               proposal.timeMachine = ks.tm.verdict;
+              if (ks.tm.verdict?.available === false) ks.tm = null; // falha não fica guardada: a próxima rodada tenta de novo
               decision = reviewProposal({ proposal, cfg: CFG, openCount, symbolBusy: !!posBySymbol[symbol] });
             }
 

@@ -227,7 +227,11 @@ export function createSchool({ loadInputs, dataDir, symbols = ["BTCUSDT", "ETHUS
       const byInterval = {};
       for (const iv of [...new Set(students.map((s) => s.interval || interval))]) {
         // em paralelo: com 10 moedas, uma por vez passava de 30 s e o agendador desistia de esperar
-        const loaded = await Promise.all(symbols.map((symbol) => loadInputs(symbol, iv).then((d) => ({ symbol, ...d }), () => null)));
+        // até 3 moedas por vez: tudo de uma vez estourava o limite de acessos da Bybit e a Máquina do Tempo do bot falhava
+        const loaded = [];
+        for (let k = 0; k < symbols.length; k += 3) {
+          loaded.push(...(await Promise.all(symbols.slice(k, k + 3).map((symbol) => loadInputs(symbol, iv).then((d) => ({ symbol, ...d }), () => null)))));
+        }
         byInterval[iv] = loaded.filter(Boolean); // mercado indisponível fica de fora
       }
       const datasets = byInterval[interval] || Object.values(byInterval)[0] || [];

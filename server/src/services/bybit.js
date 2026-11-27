@@ -19,7 +19,23 @@ async function memo(key, ttlMs, fetcher) {
   return v;
 }
 
-async function fetchJson(url, signal) {
+const isRateLimit = (status, text) => status === 403 || status === 429 || /too many visits|rate limit/i.test(String(text));
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
+/** Busca com até 2 novas tentativas quando a Bybit responde "muitos acessos" (limite por IP). */
+async function fetchJson(url, signal, attempt = 0) {
+  try {
+    return await fetchJsonOnce(url, signal);
+  } catch (e) {
+    if (attempt < 2 && isRateLimit(e.status, e.message)) {
+      await sleep(1500 * (attempt + 1));
+      return fetchJson(url, signal, attempt + 1);
+    }
+    throw e;
+  }
+}
+
+async function fetchJsonOnce(url, signal) {
   const r = await fetch(url, { signal:signal || AbortSignal.timeout(20_000) });
   const text = await r.text();
   let json = null;
